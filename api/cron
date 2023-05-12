@@ -1,0 +1,3 @@
+0 0 * * 0 python /api/db/aws_db.py
+0 0 * * * python /api/make_gifs.py
+0 * * * * python /api/db/realtime_db.py
