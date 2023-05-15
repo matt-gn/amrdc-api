@@ -9,8 +9,10 @@ if __name__ == "__main__":
     suite = TestLoader().loadTestsFromTestCase(TestAPI)
     suite.run(result)
     if not result.wasSuccessful():
-        print(f"{datetime.now()}\tStarting database initialization")
+        print(f"{datetime.now()}\tStarting AWS database initialization")
         init_aws_table()
+        print(f"{datetime.now()}\tDone")
+        print(f"{datetime.now()}\tStarting Realtime database initialization")
         update_realtime_table()
         print(f"{datetime.now()}\tDone")
     else:

@@ -1,6 +1,6 @@
 """Initialize/rebuild the historical AWS database tables for the AMRDC AWS API"""
 import urllib3
-from datetime import datetime, timedelta
+from datetime import datetime, date, timedelta
 from json import loads as json_loads
 from config import postgres
 
@@ -87,11 +87,12 @@ def get_new_resource_list() -> list:
     results = response.json()
     datasets = results['result']['results']
     new_datasets = []
+    cutoff_date = date.today() - timedelta(days=7)
     for dataset in datasets:
         for resource in dataset['resources']:
             if "10min" in resource["name"]:
                 last_modified = datetime.strptime(resource['last_modified'], '%Y-%m-%dT%H:%M:%S.%f')
-                if last_modified > datetime.now() - timedelta(days=7):
+                if last_modified > cutoff_date:
                     name = dataset['title'].split(' Automatic Weather Station')[0]
                     url = resource['url']
                     new_datasets.append(tuple(name, url))
@@ -100,24 +101,27 @@ def get_new_resource_list() -> list:
 def rebuild_aws_table():
     try:
         new_datasets = get_new_resource_list()
-        for dataset in new_datasets:
-        ## Capture new rows while updating hash collisions
-            data = process_datafile(dataset)
-            insert_statement = """INSERT INTO aws_10min VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s)
-                                ON CONFLICT (station_name, date, time) DO UPDATE
-                                SET station_name = %s,
-                                    date = %s,
-                                    time = %s,
-                                    temperature = %s,
-                                    pressure = %s,
-                                    wind_speed = %s,
-                                    wind_direction = %s,
-                                    humidity = %s,
-                                    delta_t = %s"""
-            with postgres:
-                db = postgres.cursor()
-                for line in data:
-                    db.execute(insert_statement, data)
+        if new_datasets:
+            for dataset in new_datasets:
+            ## Capture new rows while updating hash collisions
+                data = process_datafile(dataset)
+                insert_statement = """INSERT INTO aws_10min VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s)
+                                    ON CONFLICT (station_name, date, time) DO UPDATE
+                                    SET station_name = %s,
+                                        date = %s,
+                                        time = %s,
+                                        temperature = %s,
+                                        pressure = %s,
+                                        wind_speed = %s,
+                                        wind_direction = %s,
+                                        humidity = %s,
+                                        delta_t = %s"""
+                with postgres:
+                    db = postgres.cursor()
+                    for line in data:
+                        db.execute(insert_statement, data)
+        else:
+            print("No new datasets")
     except Exception as error:
         print("Error updating AWS table.")
         print(error)

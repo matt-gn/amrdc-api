@@ -1,5 +1,5 @@
 """Initialize/update the realtime database tables for the AMRDC AWS API"""
-from datetime import datetime, timedelta
+from datetime import datetime
 import urllib3
 from config import postgres
 
@@ -93,13 +93,12 @@ def process_datapoint(station_name: str, region: str, data: list) -> dict:
         print(e)
 
 def update_realtime_table():
-    cutoff_date = datetime.now() - timedelta(days=30)
     with postgres:
         db = postgres.cursor()
-        db.execute(f"DELETE FROM aws_realtime WHERE date < {cutoff_date}")
+        db.execute("DELETE FROM aws_realtime WHERE date < current_date - interval '30 days'")
     for (aws, station_name, region) in ARGOS:
         data = read_data(get_data_url(aws))
-        params = [process_datapoint(station_name, region, row) for row in data]
+        params = tuple(process_datapoint(station_name, region, row) for row in data)
         with postgres:
             db = postgres.cursor()
             for row in params:
