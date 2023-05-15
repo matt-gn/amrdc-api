@@ -11,6 +11,7 @@ if __name__ == "__main__":
     if not result.wasSuccessful():
         print(f"{datetime.now()}\tStarting database initialization")
         init_aws_table()
-        init_realtime_table()
-        init_aggregate_table()
+        update_realtime_table()
         print(f"{datetime.now()}\tDone")
+    else:
+        print(f"{datetime.now()}\tAll database tests passed. Starting application")

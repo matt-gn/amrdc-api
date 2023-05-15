@@ -4,20 +4,20 @@ from urllib.request import urlopen
 from json import loads as json_loads
 from config import postgres
 
-def extract_resource_list(dataset: dict) -> tuple:
+def extract_resource_list(dataset: dict) -> generator:
     """Receives a dict of an AMRDC AWS dataset and returns its resource urls."""
     try:
         name,_ = dataset["title"].split(" Automatic Weather Station,")
-        resource_list = tuple((name, resource["url"])
-                              for resource in dataset["resources"]
-                              if "10min" in resource["name"])
+        resource_list = ((name, resource["url"])
+                          for resource in dataset["resources"]
+                          if "10min" in resource["name"])
         return resource_list
     except Exception as error:
         print("Error extracting resource: " + dataset["title"])
         print(error)
 
 
-def get_resource_urls() -> tuple:
+def get_resource_urls() -> generator:
     """Fetches a list of all AWS datasets and returns all available resources."""
     try:
         API_URL = ('https://amrdcdata.ssec.wisc.edu/api/action/package_search?q='\
@@ -59,71 +59,61 @@ def process_datafile(resource: tuple) -> tuple:
         print(error)
 
 
-def initialize_database() -> list[str]:
-    """Commands to initialize the database with the required AWS tables"""
-    return ["""CREATE TABLE aws_10min (
-                station_name VARCHAR(18),
-                date DATE,
-                time TIME,
-                temperature REAL,
-                pressure REAL,
-                wind_speed REAL,
-                wind_direction REAL,
-                humidity REAL,
-                delta_t REAL)""",
-                "CREATE TABLE aws_10min_backup (LIKE aws_10min INCLUDING ALL)"]
-
-
-def rebuild_database() -> list[str]:
-    """Commands to backup old database and create new one for rebuild"""
-    return ["DROP TABLE aws_10min_backup",
-            "ALTER TABLE aws_10min RENAME TO aws_10min_backup",
-            """CREATE TABLE aws_10min (
-                station_name VARCHAR(18),
-                date DATE,
-                time TIME,
-                temperature REAL,
-                pressure REAL,
-                wind_speed REAL,
-                wind_direction REAL,
-                humidity REAL,
-                delta_t REAL)"""]
-
 def init_aws_table() -> None:
     """Initialize database; collect resource urls; read each resource into database"""
     try:
         with postgres:
             db = postgres.cursor()
-            init_commands = initialize_database()
-            for command in init_commands:
-                db.execute(command)
             for resource_list in get_resource_urls():
                 formatted_data = tuple(data for resource in resource_list
                                        for data in process_datafile(resource))
                 db.executemany("INSERT INTO aws_10min VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s)",
                                formatted_data)
     except Exception as error:
-        print("Error building database.")
+        print("Error building AWS table.")
         print(error)
 
 
-def rebuild_aws_table() -> None:
-    """Initialize database; collect resource urls; read each resource into database"""
-    try:
+def get_new_resource_list() -> list:
+    API_URL = ('https://amrdcdata.ssec.wisc.edu/api/action/package_search?q='\
+               'title:"quality-controlled+observational+data"&rows=1000')
+    with urlopen(API_URL) as response:
+        results = json_loads(response.read())
+    datasets = results['result']['results']
+    new_datasets = []
+    for dataset in datasets:
+        for resource in dataset['resources']:
+            if "10min" in resource["name"]:
+                last_modified = datetime.strptime(resource['last_modified'], '%Y-%m-%dT%H:%M:%S.%f')
+                if last_modified > datetime.now() - timedelta(days=7):
+                    name = dataset['title'].split(' Automatic Weather Station')[0]
+                    url = resource['url']
+                    new_datasets.append(tuple(name, url))
+    return new_datasets
+
+def rebuild_aws_table():
+    new_datasets = get_new_resource_list()
+    for dataset in new_datasets:
+    ## Capture new rows while updating hash collisions
+        data = process_datafile(dataset)
+        insert_statement = """INSERT INTO aws_10min VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s)
+                              ON CONFLICT (station_name, date, time) DO UPDATE
+                              SET station_name = %s,
+                                   date = %s,
+                                   time = %s,
+                                   temperature = %s,
+                                   pressure = %s,
+                                   wind_speed = %s,
+                                   wind_direction = %s,
+                                   humidity = %s,
+                                   delta_t = %s"""
         with postgres:
             db = postgres.cursor()
-            rebuild_commands = rebuild_database()
-            for command in rebuild_commands:
-                db.execute(command)
-            for resource_list in get_resource_urls():
-                formatted_data = tuple(data for resource in resource_list
-                                       for data in process_datafile(resource))
-                db.executemany("INSERT INTO aws_10min VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s)",
-                               formatted_data)
+            for line in data:
+                db.execute(insert_statement, data)
     except Exception as error:
-        print("Error building database.")
+        print("Error updating AWS table.")
         print(error)
-
 
 if __name__ == "__main__":
     print(f"{datetime.now()}\tStarting AWS database update")

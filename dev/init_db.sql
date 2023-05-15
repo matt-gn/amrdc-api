@@ -1,16 +1,6 @@
-"""TODO: Restrict user access, set work_mem"""
+ALTER SYSTEM SET work_mem = '128MB';
 
-CREATE USER amrdc_api WITH PASSWORD 'postgres';
-CREATE DATABASE amrdc_api;
-GRANT ALL PRIVILEGES ON DATABASE amrdc_api TO amrdc_api;
-CREATE USER api_client WITH PASSWORD 'test1234';
-CREATE ROLE readaccess;
-GRANT CONNECT ON DATABASE amrdc_api TO readaccess;
-GRANT USAGE ON SCHEMA public TO readaccess;
-GRANT SELECT ON ALL TABLES IN SCHEMA public TO readaccess;
-GRANT readaccess TO amrdc_api;
-
-CREATE TABLE aws_10min (
+CREATE TABLE IF NOT EXISTS aws_10min (
     station_name VARCHAR(18),
     date DATE,
     time TIME,
@@ -22,9 +12,7 @@ CREATE TABLE aws_10min (
     delta_t REAL
 );
 
-CREATE TABLE aws_10min_backup (LIKE aws_10min INCLUDING ALL);
-
-CREATE TABLE aws_realtime (
+CREATE TABLE IF NOT EXISTS aws_realtime (
     station_name VARCHAR(18),
     date DATE,
     time TIME,
@@ -33,7 +21,5 @@ CREATE TABLE aws_realtime (
     wind_speed REAL,
     wind_direction REAL,
     humidity REAL,
-    latitude VARCHAR(3),
-    longitude VARCHAR(3),
     region VARCHAR(24)
 );

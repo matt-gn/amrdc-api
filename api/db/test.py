@@ -66,22 +66,5 @@ class TestAPI(TestCase):
         self.assertEqual(test_result['header'], header)
         self.assertGreater(len(test_result['data']), 0)
 
-        ## aws_realtime_aggregate tests
-        aws_aggregate_schema = {'header': ('column_name', 'data_type'),
-                                'data':   [('date', 'date'),
-                                           ('time', 'time without time zone'),
-                                           ('datapoint', 'real'),
-                                           ('agg_type', 'character varying'),
-                                           ('variable', 'character varying'),
-                                           ('station_name', 'character varying')]}
-        schema_query = """select column_name, data_type from information_schema.columns
-                          where table_name = 'aws_realtime_aggregate'"""
-        self.assertEqual(query_database(schema_query), aws_aggregate_schema)
-        test_result = query_database("SELECT * FROM aws_realtime_aggregate")
-        self.assertEqual(len(test_result), 2)
-        header = ('date', 'time', 'agg_type', 'variable', 'station_name', 'datapoint')
-        self.assertEqual(test_result['header'], header)
-        self.assertGreater(len(test_result['data']), 0)
-
 if __name__ == "__main__":
     test_all()

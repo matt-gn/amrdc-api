@@ -69,16 +69,16 @@ def current_station_data_endpoint(stations: str) -> JSONResponse:
     return JSONResponse(content=query_results)
 
 
-@app.get("/realtime/daily-maxmin/{variable}")
-def daily_maxmin_endpoint(variable: str = None) -> JSONResponse:
-    query = ("""SELECT station_name, TO_CHAR(date, 'YYYY-MM-DD'), TO_CHAR(time, 'HH24:MI:SS'),
-                variable, datapoint
-                FROM aws_realtime_aggregate
-                WHERE variable=%s ORDER BY variable DESC""", (variable,))
-    query_results = query_database(query[0], query[1])["data"]
-    maximum, minimum = query_results
-    daily_aggregates = {"max":maximum,"min":minimum}
-    return JSONResponse(content=daily_aggregates)
+##@app.get("/realtime/daily-maxmin/{variable}")
+##def daily_maxmin_endpoint(variable: str = None) -> JSONResponse:
+##    query = ("""SELECT station_name, TO_CHAR(date, 'YYYY-MM-DD'), TO_CHAR(time, 'HH24:MI:SS'),
+##                variable, datapoint
+##                FROM aws_realtime_aggregate
+##                WHERE variable=%s ORDER BY variable DESC""", (variable,))
+##    query_results = query_database(query[0], query[1])["data"]
+##    maximum, minimum = query_results
+##    daily_aggregates = {"max":maximum,"min":minimum}
+##    return JSONResponse(content=daily_aggregates)
 
 
                 #######################################

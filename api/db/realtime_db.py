@@ -60,15 +60,13 @@ def read_data(url: str) -> list | None:
         with urlopen(url) as datafile:
             data = datafile.read().decode('utf-8').strip().split('\n')
             table = [line.split()[1:] for line in data if len(line.split()) == 10][2:]
-            if len(table) > 0:
-                return table[-1]
-            return None             ## Return None if there's no available data
+            return table if table else None
     except Exception as error:
         print(f"Could not read datafile: {url}")
         print(error)
 
 
-def process_datapoint(station_name: str, coords: list, region: str, data: list) -> dict:
+def process_datapoint(station_name: str, region: str, data: list) -> dict:
     """Formats a row of data into our database schema dict"""
     try:
         date_str, time, temp, press, wind_spd, wind_dir, hum, _, _ = data   # Unpack datapoint
@@ -83,8 +81,6 @@ def process_datapoint(station_name: str, coords: list, region: str, data: list) 
             "wind_speed": float(wind_spd),
             "wind_direction": int(wind_dir),
             "humidity": float(hum),
-            "latitude": coords[0],
-            "longitude": coords[1],
             "region": region
         }
         return params
@@ -92,157 +88,32 @@ def process_datapoint(station_name: str, coords: list, region: str, data: list) 
         print(f"Could not process datapoint: {station_name}\n{data}")
         print(e)
 
+def update_realtime_table():
 
-def init_realtime_table() -> None:
-    """Initialize the aws_realtime database table"""
-    try:
+    cutoff_date = datetime.now() - timedelta(days=30)
+    with postgres:
+        db = postgres.cursor()
+        db.execute(f"DELETE FROM aws_realtime WHERE date < {cutoff_date}")
+
+    for (aws, station_name, region) in ARGOS:
+        data = read_data(get_data_url(aws))
+        params = [process_datapoint(station_name, region, row) for row in data]
         with postgres:
             db = postgres.cursor()
-            db.execute("""CREATE TABLE aws_realtime (
-                        station_name VARCHAR(18),
-                        date DATE,
-                        time TIME,
-                        temperature REAL,
-                        pressure REAL,
-                        wind_speed REAL,
-                        wind_direction REAL,
-                        humidity REAL,
-                        latitude VARCHAR(3),
-                        longitude VARCHAR(3),
-                        region VARCHAR(24))""")
-            for (aws, station_name, coords, region) in ARGOS:
-                data = read_data(get_data_url(aws))
-                if data:
-                    params = process_datapoint(station_name, coords, region, data)
-                    if params:
-                        db.execute("""INSERT INTO aws_realtime VALUES (
-                                   %(station_name)s,
-                                   %(date)s,
-                                   %(time)s,
-                                   %(temperature)s,
-                                   %(pressure)s,
-                                   %(wind_speed)s,
-                                   %(wind_direction)s,
-                                   %(humidity)s,
-                                   %(latitude)s,
-                                   %(longitude)s,
-                                   %(region)s)""", params)
-    except Exception as e:
-        print("Realtime table initialization failed.")
-        print(e)
-
-
-def update_realtime_table() -> None:
-    """Updates the aws_realtime database table"""
-    try:
-        with postgres:
-            db = postgres.cursor()
-            for (aws, station_name, coords, region) in ARGOS:
-                data = read_data(get_data_url(aws))
-                if data:    ## Important since we're returning None if there's no data
-                    params = process_datapoint(station_name, coords, region, data)
-                    if params:
-                        db.execute("""UPDATE aws_realtime SET
-                                    date = %(date)s,
-                                    time = %(time)s,
-                                    temperature = %(temperature)s,
-                                    pressure = %(pressure)s,
-                                    wind_speed = %(wind_speed)s,
-                                    wind_direction = %(wind_direction)s,
-                                    humidity = %(humidity)s
-                                    WHERE station_name = %(station_name)s""", params)
-    except Exception as e:
-        print("Realtime table update failed.")
-        print(e)
-
-
-def init_aggregate_table() -> None:
-    """Initialize the aws_realtime_aggregate database table with daily max/min values."""
-    try:
-        with postgres:
-            db = postgres.cursor()
-            db.execute("""CREATE TABLE aws_realtime_aggregate (
-                       date DATE,
-                       time TIME,
-                       agg_type VARCHAR(3),
-                       variable VARCHAR(14),
-                       station_name VARCHAR(18),
-                       datapoint REAL)""")
-            # Here we iterate through each measurement variable so we can evaluate each max/min
-            for variable in ("temperature", "pressure", "wind_speed", "wind_direction", "humidity"):
-                # MAX: Pulls the current max out of the main table
-                db.execute(f"""SELECT date, time, station_name, {variable} FROM aws_realtime
-                                ORDER BY {variable} DESC LIMIT 1""")
-                results = db.fetchone()
-                (date, time, station_name, max_var) = results
-                insert_row = (date, time, "max", variable, station_name, max_var)
-                db.execute("INSERT INTO aws_realtime_aggregate VALUES (%s, %s, %s, %s, %s, %s)",
-                           insert_row)
-                # MIN: Same but with the minimum value
-                db.execute(f"""SELECT date, time, station_name, {variable} FROM aws_realtime
-                                ORDER BY {variable} ASC LIMIT 1""")
-                results = db.fetchone()
-                (date, time, station_name, min_var) = results
-                insert_row = (date, time, "min", variable, station_name, min_var)
-                db.execute("INSERT INTO aws_realtime_aggregate VALUES (%s, %s, %s, %s, %s, %s)",
-                           insert_row)
-    except Exception as e:
-        print("Aggregate table initialization failed.")
-        print(e)
-
-
-def update_aggregate_table() -> None:
-    """Update aws_realtime_aggregate database table with current daily max/min."""
-    ## NOTE Values are changed if: max/min is exceeded; or if day has changed
-    try:
-        with postgres:
-            db = postgres.cursor()
-            ## Iterate through all measurements to derive max/min
-            for variable in ("temperature", "pressure", "wind_speed", "wind_direction", "humidity"):
-                # MAX: Get current maximum value from realtime table, daily maximum from daily_agg
-                db.execute(f"""SELECT date, time, station_name, {variable}
-                              FROM aws_realtime ORDER BY {variable} DESC LIMIT 1""")
-                current_max_data = db.fetchone()
-                (current_date,current_time,station_name,current_max) = current_max_data
-                update_row = {"current_date": current_date,
-                              "current_time": current_time,
-                              "current_max": current_max,
-                              "station_name": station_name, 
-                              "variable": variable}
-                db.execute(f"""IF (SELECT datapoint FROM aws_realtime_aggregate
-                                  WHERE agg_type="max" AND variable={variable}) < {current_max}
-                              OR (SELECT date FROM aws_realtime_aggregate
-                                  WHERE agg_type="max" AND variable={variable}) < {current_date}
-                              THEN
-                                  UPDATE aws_realtime_aggregate SET date={current_date}, time={current_time},
-                                  station_name={station_name}, datapoint={current_max}
-                                  WHERE agg_type="max" AND variable={variable}""", update_row)
-
-                # MIN: Get current min from realtime and daily min from daily_agg
-                db.execute(f"""SELECT date, time, station_name, {variable}
-                              FROM aws_realtime ORDER BY {variable} ASC LIMIT 1""")
-                current_min_data = db.fetchone()
-                (current_date,current_time,station_name,current_min) = current_min_data
-                update_row = {"current_date": current_date,
-                              "current_time": current_time,
-                              "current_min": current_min,
-                              "station_name": station_name,
-                              "variable": variable}
-                db.execute(f"""IF (SELECT datapoint FROM aws_realtime_aggregate
-                                  WHERE agg_type="min" AND variable={variable} > {current_min}
-                              OR (SELECT date FROM aws_realtime_aggregate
-                                  WHERE agg_type="min" AND variable={variable} < {current_date}
-                              THEN
-                                  UPDATE aws_realtime_aggregate SET date={current_date}, time={current_time},
-                                  station_name={station_name}, datapoint={current_min}
-                                  WHERE agg_type="min" AND variable={variable}""", update_row)
-    except Exception as e:
-        print("Aggregate table update failed.")
-        print(e)
-
+            for row in params:
+                db.execute("""INSERT INTO aws_realtime VALUES (
+                                %(station_name)s,
+                                %(date)s,
+                                %(time)s,
+                                %(temperature)s,
+                                %(pressure)s,
+                                %(wind_speed)s,
+                                %(wind_direction)s,
+                                %(humidity)s,
+                                %(region)s)
+                           ON CONFLICT (station_name, date, time) DO NOTHING""", params)
 
 if __name__ == "__main__":
     print(f"{datetime.now()}\tStarting realtime database update")
     update_realtime_table()
-    update_aggregate_table()
     print(f"{datetime.now()}\tDone")
