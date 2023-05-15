@@ -92,25 +92,26 @@ def get_new_resource_list() -> list:
     return new_datasets
 
 def rebuild_aws_table():
-    new_datasets = get_new_resource_list()
-    for dataset in new_datasets:
-    ## Capture new rows while updating hash collisions
-        data = process_datafile(dataset)
-        insert_statement = """INSERT INTO aws_10min VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s)
-                              ON CONFLICT (station_name, date, time) DO UPDATE
-                              SET station_name = %s,
-                                   date = %s,
-                                   time = %s,
-                                   temperature = %s,
-                                   pressure = %s,
-                                   wind_speed = %s,
-                                   wind_direction = %s,
-                                   humidity = %s,
-                                   delta_t = %s"""
-        with postgres:
-            db = postgres.cursor()
-            for line in data:
-                db.execute(insert_statement, data)
+    try:
+        new_datasets = get_new_resource_list()
+        for dataset in new_datasets:
+        ## Capture new rows while updating hash collisions
+            data = process_datafile(dataset)
+            insert_statement = """INSERT INTO aws_10min VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s)
+                                ON CONFLICT (station_name, date, time) DO UPDATE
+                                SET station_name = %s,
+                                    date = %s,
+                                    time = %s,
+                                    temperature = %s,
+                                    pressure = %s,
+                                    wind_speed = %s,
+                                    wind_direction = %s,
+                                    humidity = %s,
+                                    delta_t = %s"""
+            with postgres:
+                db = postgres.cursor()
+                for line in data:
+                    db.execute(insert_statement, data)
     except Exception as error:
         print("Error updating AWS table.")
         print(error)
