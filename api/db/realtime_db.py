@@ -1,7 +1,10 @@
 """Initialize/update the realtime database tables for the AMRDC AWS API"""
 from datetime import datetime
-from urllib.request import urlopen
+import urllib3
 from config import postgres
+
+## Define HTTP connection pool manager
+http = urllib3.PoolManager()
 
 ## Hardcoded ARGOS AWS metadata:
 ## (ARGOS ID#, Station Name, Antarctic Region)
@@ -57,10 +60,11 @@ def get_data_url(argos_id: str):
 def read_data(url: str) -> list | None:
     """Access data via AMRC URL and return the most recent datapoint"""
     try:
-        with urlopen(url) as datafile:
-            data = datafile.read().decode('utf-8').strip().split('\n')
-            table = [line.split()[1:] for line in data if len(line.split()) == 10][2:]
-            return table if table else None
+        global http
+        datafile = http.request("GET", url, retries=5)
+        data = datafile.data.decode('utf-8').strip().split('\n')
+        table = [line.split()[1:] for line in data if len(line.split()) == 10][2:]
+        return table if table else None
     except Exception as error:
         print(f"Could not read datafile: {url}")
         print(error)

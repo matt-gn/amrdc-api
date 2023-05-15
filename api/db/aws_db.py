@@ -1,8 +1,11 @@
 """Initialize/rebuild the historical AWS database tables for the AMRDC AWS API"""
+import urllib3
 from datetime import datetime
-from urllib.request import urlopen
 from json import loads as json_loads
 from config import postgres
+
+## Define HTTP connection pool manager
+http = urllib3.PoolManager()
 
 def extract_resource_list(dataset: dict) -> tuple:
     """Receives a dict of an AMRDC AWS dataset and returns its resource urls."""
@@ -22,8 +25,9 @@ def get_resource_urls() -> tuple:
     try:
         API_URL = ('https://amrdcdata.ssec.wisc.edu/api/action/package_search?q='\
                    'title:"quality-controlled+observational+data"&rows=1000')
-        with urlopen(API_URL) as response:
-            datasets = json_loads(response.read())
+        global http
+        response = http.request("GET", API_URL, retries=3)
+        datasets = response.json()
         att = "Alexander Tall Tower"
         resource_lists = tuple(extract_resource_list(dataset)
                           for dataset in datasets['result']['results']
@@ -50,10 +54,11 @@ def process_datafile(resource: tuple) -> tuple:
     """Accesses a datafile via URL and returns a list containing each row"""
     name, url = resource
     try:
-        with urlopen(url) as datafile:
-            data = datafile.read().decode('utf-8').strip().split('\n')[2:]
-            formatted_datafile = tuple(process_datapoint(name, line) for line in data)
-            return formatted_datafile
+        global http
+        datafile = http.request("GET", url, retries=5)
+        data = datafile.data.decode('utf-8').strip().split('\n')[2:]
+        formatted_datafile = tuple(process_datapoint(name, line) for line in data)
+        return formatted_datafile
     except Exception as error:
         print(f"Could not process resource: {name}\n{url}")
         print(error)
@@ -77,8 +82,9 @@ def init_aws_table() -> None:
 def get_new_resource_list() -> list:
     API_URL = ('https://amrdcdata.ssec.wisc.edu/api/action/package_search?q='\
                'title:"quality-controlled+observational+data"&rows=1000')
-    with urlopen(API_URL) as response:
-        results = json_loads(response.read())
+    global http
+    response = http.request("GET", API_URL, retries=3)
+    results = response.json()
     datasets = results['result']['results']
     new_datasets = []
     for dataset in datasets:
