@@ -4,11 +4,11 @@ from urllib.request import urlopen
 from json import loads as json_loads
 from config import postgres
 
-def extract_resource_list(dataset: dict) -> generator:
+def extract_resource_list(dataset: dict) -> tuple:
     """Receives a dict of an AMRDC AWS dataset and returns its resource urls."""
     try:
         name,_ = dataset["title"].split(" Automatic Weather Station,")
-        resource_list = ((name, resource["url"])
+        resource_list = tuple((name, resource["url"])
                           for resource in dataset["resources"]
                           if "10min" in resource["name"])
         return resource_list
@@ -17,7 +17,7 @@ def extract_resource_list(dataset: dict) -> generator:
         print(error)
 
 
-def get_resource_urls() -> generator:
+def get_resource_urls() -> tuple:
     """Fetches a list of all AWS datasets and returns all available resources."""
     try:
         API_URL = ('https://amrdcdata.ssec.wisc.edu/api/action/package_search?q='\
@@ -25,7 +25,7 @@ def get_resource_urls() -> generator:
         with urlopen(API_URL) as response:
             datasets = json_loads(response.read())
         att = "Alexander Tall Tower"
-        resource_lists = (extract_resource_list(dataset)
+        resource_lists = tuple(extract_resource_list(dataset)
                           for dataset in datasets['result']['results']
                           if att not in dataset["title"])
         return resource_lists
