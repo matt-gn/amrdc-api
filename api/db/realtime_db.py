@@ -1,5 +1,5 @@
 """Initialize/update the realtime database tables for the AMRDC AWS API"""
-from datetime import datetime
+from datetime import datetime, timedelta
 import urllib3
 from config import postgres
 

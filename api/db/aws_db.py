@@ -1,6 +1,6 @@
 """Initialize/rebuild the historical AWS database tables for the AMRDC AWS API"""
 import urllib3
-from datetime import datetime
+from datetime import datetime, timedelta
 from json import loads as json_loads
 from config import postgres
 
