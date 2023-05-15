@@ -204,9 +204,9 @@ def update_aggregate_table() -> None:
                               FROM aws_realtime ORDER BY {variable} DESC LIMIT 1""")
                 current_max_data = db.fetchone()
                 (current_date,current_time,station_name,current_max) = current_max_data
-                update_row = {"current_date": datetime.datetime(current_date).date,
-                              "current_time": datetime.datetime(current_time).time(),
-                              "current_max": float(current_max),
+                update_row = {"current_date": current_date,
+                              "current_time": current_time,
+                              "current_max": current_max,
                               "station_name": station_name, 
                               "variable": variable}
                 db.execute(f"""IF (SELECT datapoint FROM aws_realtime_aggregate
@@ -223,9 +223,9 @@ def update_aggregate_table() -> None:
                               FROM aws_realtime ORDER BY {variable} ASC LIMIT 1""")
                 current_min_data = db.fetchone()
                 (current_date,current_time,station_name,current_min) = current_min_data
-                update_row = {"current_date": datetime.datetime(current_date).date,
-                              "current_time": datetime.datetime(current_time).time(),
-                              "current_min": float(current_min),
+                update_row = {"current_date": current_date,
+                              "current_time": current_time,
+                              "current_min": current_min,
                               "station_name": station_name,
                               "variable": variable}
                 db.execute(f"""IF (SELECT datapoint FROM aws_realtime_aggregate
@@ -242,5 +242,7 @@ def update_aggregate_table() -> None:
 
 
 if __name__ == "__main__":
+    print(f"{datetime.now()}\tStarting realtime database update")
     update_realtime_table()
     update_aggregate_table()
+    print(f"{datetime.now()}\tDone")

@@ -1,5 +1,5 @@
 from urllib.request import urlopen
-from datetime import date, timedelta
+from datetime import datetime, date, timedelta
 from io import BytesIO
 from PIL import Image
 
@@ -74,5 +74,7 @@ def make_gif(sat_images):                                                       
             print(error)
 
 if __name__ == "__main__":
+    print(f"{datetime.now()}\tCreating gif images")
     urls = harvest_gif_images()
     make_gif(urls)
+    print(f"{datetime.now()}\tDone")

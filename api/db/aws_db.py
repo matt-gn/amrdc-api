@@ -91,7 +91,6 @@ def rebuild_database() -> list[str]:
 
 def init_aws_table() -> None:
     """Initialize database; collect resource urls; read each resource into database"""
-    print(f"{datetime.now()}\tAMRDC API DB: Starting build process...")
     try:
         with postgres:
             db = postgres.cursor()
@@ -103,7 +102,6 @@ def init_aws_table() -> None:
                                        for data in process_datafile(resource))
                 db.executemany("INSERT INTO aws_10min VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s)",
                                formatted_data)
-        print(f"{datetime.now()}\tAMRDC API DB: Finished.")
     except Exception as error:
         print("Error building database.")
         print(error)
@@ -111,7 +109,6 @@ def init_aws_table() -> None:
 
 def rebuild_aws_table() -> None:
     """Initialize database; collect resource urls; read each resource into database"""
-    print(f"{datetime.now()}\tAMRDC API DB: Starting build process...")
     try:
         with postgres:
             db = postgres.cursor()
@@ -123,11 +120,12 @@ def rebuild_aws_table() -> None:
                                        for data in process_datafile(resource))
                 db.executemany("INSERT INTO aws_10min VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s)",
                                formatted_data)
-        print(f"{datetime.now()}\tAMRDC API DB: Finished.")
     except Exception as error:
         print("Error building database.")
         print(error)
 
 
 if __name__ == "__main__":
+    print(f"{datetime.now()}\tStarting AWS database update")
     rebuild_aws_table()
+    print(f"{datetime.now()}\tDone")
