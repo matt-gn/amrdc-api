@@ -1,5 +1,6 @@
 """Initialize/rebuild the historical AWS database tables for the AMRDC AWS API"""
 import urllib3
+import json
 from datetime import datetime
 from config import postgres
 import test
@@ -27,7 +28,7 @@ def get_resource_urls() -> tuple:
                    'title:"quality-controlled+observational+data"&rows=1000')
         global http
         response = http.request("GET", API_URL, retries=3)
-        datasets = response.json()
+        datasets = json.loads(response.data)
         att = "Alexander Tall Tower"
         resource_lists = tuple(extract_resource_list(dataset)
                           for dataset in datasets['result']['results']
@@ -90,7 +91,7 @@ def get_new_resource_list() -> list:
                'title:"quality-controlled+observational+data"&rows=1000')
     global http
     response = http.request("GET", API_URL, retries=3)
-    results = response.json()
+    results = json.loads(response.data)
     datasets = results['result']['results']
     new_datasets = []
     for dataset in datasets:
