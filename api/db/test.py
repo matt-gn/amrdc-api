@@ -1,4 +1,4 @@
-from unittest import TestCase, TestResult, TestLoader, TextTestResult, main as test_all
+from unittest import TestCase, TestResult, TestLoader, TextTestRunner, main as test_all
 from typing import Tuple
 from config import postgres
 
@@ -70,14 +70,10 @@ class TestRealtime(TestCase):
         self.assertGreater(len(test_result['data']), 0)
 
 def test_db():
-    result = TestResult()
     suite = TestLoader().loadTestsFromTestCase(TestAWS)
-    suite.run(result)
-    text_result = TextTestResult(result, descriptions=True, verbosity=2)
-    # Print out the test results
-    text_result.printErrors()  # Print errors and failures
-    text_result.printSummary()  # Print the summary of the test results
-
+    runner = TextTestRunner()
+    runner.run(suite)
+    
 def verify_db():
     result = TestResult()
     suite = TestLoader().loadTestsFromTestCase(TestAWS)
