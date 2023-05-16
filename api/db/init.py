@@ -2,7 +2,7 @@ from unittest import TestResult, TestLoader
 from datetime import datetime
 from aws_db import init_aws_table
 from realtime_db import update_realtime_table
-from test import *
+import test
 
 if __name__ == "__main__":
     result = TestResult()
