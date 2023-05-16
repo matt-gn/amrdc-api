@@ -73,7 +73,7 @@ def init_aws_table() -> None:
                                        for data in process_datafile(resource))
                 db.executemany("INSERT INTO aws_10min VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s)",
                                formatted_data)
-            db.execute("INSERT INTO aws_10min_last_update (last_update) VALUE (CURRENT_DATE)")
+            db.execute("INSERT INTO aws_10min_last_update (last_update) VALUES (CURRENT_DATE)")
     except Exception as error:
         print("Error building AWS table.")
         print(error)
@@ -133,8 +133,8 @@ def rebuild_aws_table():
                         db.execute(insert_statement, data)
             else:
                 print("No new datasets")
-            db.execute("DELETE * FROM aws_10min_last_update")
-            db.execute("INSERT INTO aws_10min_last_update (last_update) VALUE (CURRENT_DATE)")
+            db.execute("DELETE FROM aws_10min_last_update")
+            db.execute("INSERT INTO aws_10min_last_update (last_update) VALUES (CURRENT_DATE)")
     except Exception as error:
         print("Error updating AWS table.")
         print(error)
