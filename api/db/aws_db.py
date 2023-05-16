@@ -89,11 +89,12 @@ def get_new_resource_list() -> list:
     new_datasets = []
     with postgres:
         db = postgres.cursor()
-        cutoff_date = db.execute("SELECT last_update FROM aws_10min_last_update").fetchall()[0]
+        db.execute("SELECT last_update FROM aws_10min_last_update")
+        cutoff_date = db.fetchall()[0][0]
     for dataset in datasets:
         for resource in dataset['resources']:
             if "10min" in resource["name"]:
-                last_modified = datetime.strptime(resource['last_modified'], '%Y-%m-%dT%H:%M:%S.%f')
+                last_modified = datetime.strptime(resource['last_modified'], '%Y-%m-%dT%H:%M:%S.%f').date()
                 if last_modified > cutoff_date:
                     name = dataset['title'].split(' Automatic Weather Station')[0]
                     url = resource['url']
