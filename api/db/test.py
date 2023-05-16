@@ -14,8 +14,8 @@ def query_database(query_string: str, args: Tuple = ()) -> dict:
         data = database.fetchall()
     return {"header": header, "data": data}
 
-class TestAPI(TestCase):
-    def test_query_database(self):
+class TestAWS(TestCase):
+    def test_queries(self):
         ## aws_10min Tests
         aws_10min_schema = {'header': ('column_name', 'data_type'),
                             'data':   [('delta_t', 'real'), 
@@ -44,6 +44,8 @@ class TestAPI(TestCase):
         self.assertEqual(test_result['header'], header)
         self.assertIsNotNone(test_result['data'])
 
+class TestRealtime(TestCase):
+    def test_queries(self):
         ## aws_realtime tests
         aws_realtime_schema = {'header': ('column_name', 'data_type'),
                                'data':   [('humidity', 'real'),
