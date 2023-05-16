@@ -31,10 +31,13 @@ class TestAWS(TestCase):
                           where table_name = 'aws_10min'"""
         self.assertEqual(query_database(schema_query), aws_10min_schema)
 
+        count = query_database("SELECT COUNT(*) FROM aws_10min")
+        self.assertTrue(count['data'][0][0] != 0)
+
         stations_list = query_database("SELECT DISTINCT(station_name) FROM aws_10min ORDER BY station_name")
-        self.assertIsNotNone(stations_list['data'])
+        self.assertTrue(stations_list['data'] != [])
         years_list = query_database("SELECT DISTINCT(date_part('year', date)) as date FROM aws_10min ORDER BY date")
-        self.assertIsNotNone(years_list['data'])
+        self.assertTrue(years_list['data'] !- [])
 
         test_result = query_database("""SELECT * FROM aws_10min
                                         WHERE station_name = 'Byrd' 
@@ -42,7 +45,7 @@ class TestAWS(TestCase):
         self.assertEqual(len(test_result), 2)
         header = ('station_name', 'date', 'time', 'temperature', 'pressure', 'wind_speed', 'wind_direction', 'humidity', 'delta_t')
         self.assertEqual(test_result['header'], header)
-        self.assertIsNotNone(test_result['data'])
+        self.assertTrue(test_result['data'] != [])
 
 class TestRealtime(TestCase):
     def test_queries(self):

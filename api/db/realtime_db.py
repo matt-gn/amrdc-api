@@ -98,31 +98,32 @@ def update_realtime_table():
         db.execute("DELETE FROM aws_realtime WHERE date < current_date - interval '30 days'")
     for (aws, station_name, region) in ARGOS:
         data = read_data(get_data_url(aws))
-        params = tuple(process_datapoint(station_name, region, row) for row in data)
-        with postgres:
-            db = postgres.cursor()
-            for row in params:
-                db.execute("""MERGE INTO aws_realtime AS target
-                              USING (VALUES (%(station_name)s,
-                                             %(date)s,
-                                             %(time)s,
-                                             %(temperature)s,
-                                             %(pressure)s,
-                                             %(wind_speed)s,
-                                             %(wind_direction)s,
-                                             %(humidity)s,
-                                             %(region)s))
-                                      AS source(station_name, date, time, temperature, pressure, 
-                                                wind_speed, wind_direction, humidity, region)
-                                      ON (target.station_name = source.station_name 
-                                          AND target.date = source.date
-                                          AND target.time = source.time)
-                                      WHEN NOT MATCHED THEN
-                                          INSERT (station_name, date, time, temperature, pressure,
-                                                  wind_speed, wind_direction, humidity, region)
-                                          VALUES (source.station_name, source.date, source.time,
-                                                  source.temperature, source.pressure, source.wind_speed,
-                                                  source.wind_direction, source.humidity, source.region)""", row)
+        if data:
+            params = tuple(process_datapoint(station_name, region, row) for row in data)
+            with postgres:
+                db = postgres.cursor()
+                for row in params:
+                    db.execute("""MERGE INTO aws_realtime AS target
+                                USING (VALUES (%(station_name)s,
+                                                %(date)s,
+                                                %(time)s,
+                                                %(temperature)s,
+                                                %(pressure)s,
+                                                %(wind_speed)s,
+                                                %(wind_direction)s,
+                                                %(humidity)s,
+                                                %(region)s))
+                                        AS source(station_name, date, time, temperature, pressure, 
+                                                    wind_speed, wind_direction, humidity, region)
+                                        ON (target.station_name = source.station_name 
+                                            AND target.date = source.date
+                                            AND target.time = source.time)
+                                        WHEN NOT MATCHED THEN
+                                            INSERT (station_name, date, time, temperature, pressure,
+                                                    wind_speed, wind_direction, humidity, region)
+                                            VALUES (source.station_name, source.date, source.time,
+                                                    source.temperature, source.pressure, source.wind_speed,
+                                                    source.wind_direction, source.humidity, source.region)""", row)
 
 if __name__ == "__main__":
     print(f"{datetime.now()}\tStarting realtime database update")
