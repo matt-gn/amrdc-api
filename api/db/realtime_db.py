@@ -102,17 +102,27 @@ def update_realtime_table():
         with postgres:
             db = postgres.cursor()
             for row in params:
-                db.execute("""INSERT INTO aws_realtime VALUES (
-                                %(station_name)s,
-                                %(date)s,
-                                %(time)s,
-                                %(temperature)s,
-                                %(pressure)s,
-                                %(wind_speed)s,
-                                %(wind_direction)s,
-                                %(humidity)s,
-                                %(region)s)
-                           ON CONFLICT (station_name, date, time) DO NOTHING""", row)
+                db.execute("""MERGE INTO aws_realtime AS target
+                              USING (VALUES (%(station_name)s,
+                                             %(date)s,
+                                             %(time)s,
+                                             %(temperature)s,
+                                             %(pressure)s,
+                                             %(wind_speed)s,
+                                             %(wind_direction)s,
+                                             %(humidity)s,
+                                             %(region)s))
+                                      AS source(station_name, date, time, temperature, pressure, 
+                                                wind_speed, wind_direction, humidity, delta_t)
+                                      ON (target.station_name = source.station_name 
+                                          AND target.date = source.date
+                                          AND target.time = source.time)
+                                      WHEN NOT MATCHED THEN
+                                          INSERT (station_name, date, time, temperature, pressure,
+                                                  wind_speed, wind_direction, humidity, delta_t)
+                                          VALUES (source.station_name, source.date, source.time,
+                                                  source.temperature, source.pressure, source.wind_speed,
+                                                  source.wind_direction, source.humidity, source.delta_t)""", row)
 
 if __name__ == "__main__":
     print(f"{datetime.now()}\tStarting realtime database update")

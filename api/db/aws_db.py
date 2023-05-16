@@ -105,17 +105,26 @@ def rebuild_aws_table():
             for dataset in new_datasets:
             ## Capture new rows while updating hash collisions
                 data = process_datafile(dataset)
-                insert_statement = """INSERT INTO aws_10min VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s)
-                                    ON CONFLICT (station_name, date, time) DO UPDATE
-                                    SET station_name = %s,
-                                        date = %s,
-                                        time = %s,
-                                        temperature = %s,
-                                        pressure = %s,
-                                        wind_speed = %s,
-                                        wind_direction = %s,
-                                        humidity = %s,
-                                        delta_t = %s"""
+                insert_statement = """MERGE INTO aws_10min AS target
+                                      USING (VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s))
+                                      AS source(station_name, date, time, temperature, pressure, 
+                                                wind_speed, wind_direction, humidity, delta_t)
+                                      ON (target.station_name = source.station_name 
+                                          AND target.date = source.date
+                                          AND target.time = source.time)
+                                      WHEN MATCHED THEN
+                                          UPDATE SET temperature = source.temperature,
+                                                     pressure = source.pressure,
+                                                     wind_speed = source.wind_speed,
+                                                     wind_direction = source.wind_direction,
+                                                     humidity = source.humidity,
+                                                     delta_t = source.delta_t
+                                      WHEN NOT MATCHED THEN
+                                          INSERT (station_name, date, time, temperature, pressure,
+                                                  wind_speed, wind_direction, humidity, delta_t)
+                                          VALUES (source.station_name, source.date, source.time,
+                                                  source.temperature, source.pressure, source.wind_speed,
+                                                  source.wind_direction, source.humidity, source.delta_t)"""
                 with postgres:
                     db = postgres.cursor()
                     for line in data:
