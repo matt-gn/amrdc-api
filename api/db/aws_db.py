@@ -2,6 +2,7 @@
 import urllib3
 from datetime import datetime, date
 from config import postgres
+import test
 
 ## Define HTTP connection pool manager
 http = urllib3.PoolManager()
@@ -73,6 +74,7 @@ def init_aws_table() -> None:
                                        for data in process_datafile(resource))
                 db.executemany("INSERT INTO aws_10min VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s)",
                                formatted_data)
+            db.execute("INSERT INTO aws_10min_last_update VALUE (%s)", (date.today(),))
     except Exception as error:
         print("Error building AWS table.")
         print(error)
@@ -102,38 +104,39 @@ def get_new_resource_list() -> list:
 def rebuild_aws_table():
     try:
         new_datasets = get_new_resource_list()
-        if new_datasets:
-            for dataset in new_datasets:
-            ## Capture new rows while updating hash collisions
-                data = process_datafile(dataset)
-                insert_statement = """MERGE INTO aws_10min AS target
-                                      USING (VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s))
-                                      AS source(station_name, date, time, temperature, pressure, 
-                                                wind_speed, wind_direction, humidity, delta_t)
-                                      ON (target.station_name = source.station_name 
-                                          AND target.date = source.date
-                                          AND target.time = source.time)
-                                      WHEN MATCHED THEN
-                                          UPDATE SET temperature = source.temperature,
-                                                     pressure = source.pressure,
-                                                     wind_speed = source.wind_speed,
-                                                     wind_direction = source.wind_direction,
-                                                     humidity = source.humidity,
-                                                     delta_t = source.delta_t
-                                      WHEN NOT MATCHED THEN
-                                          INSERT (station_name, date, time, temperature, pressure,
-                                                  wind_speed, wind_direction, humidity, delta_t)
-                                          VALUES (source.station_name, source.date, source.time,
-                                                  source.temperature, source.pressure, source.wind_speed,
-                                                  source.wind_direction, source.humidity, source.delta_t)"""
-                with postgres:
-                    db = postgres.cursor()
+        with postgres:
+            db = postgres.cursor()
+            if new_datasets:
+                for dataset in new_datasets:
+                ## Capture new rows while updating hash collisions
+                    data = process_datafile(dataset)
+                    insert_statement = """MERGE INTO aws_10min AS target
+                                        USING (VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s))
+                                        AS source(station_name, date, time, temperature, pressure, 
+                                                    wind_speed, wind_direction, humidity, delta_t)
+                                        ON (target.station_name = source.station_name 
+                                            AND target.date = source.date
+                                            AND target.time = source.time)
+                                        WHEN MATCHED THEN
+                                            UPDATE SET temperature = source.temperature,
+                                                        pressure = source.pressure,
+                                                        wind_speed = source.wind_speed,
+                                                        wind_direction = source.wind_direction,
+                                                        humidity = source.humidity,
+                                                        delta_t = source.delta_t
+                                        WHEN NOT MATCHED THEN
+                                            INSERT (station_name, date, time, temperature, pressure,
+                                                    wind_speed, wind_direction, humidity, delta_t)
+                                            VALUES (source.station_name, source.date, source.time,
+                                                    source.temperature, source.pressure, source.wind_speed,
+                                                    source.wind_direction, source.humidity, source.delta_t)"""
                     for line in data:
                         db.execute(insert_statement, data)
-                        db.execute("DELETE * FROM aws_10min_last_update")
-                        db.execute("INSERT INTO aws_10min_last_update VALUE (%s)", (date.today(),))
-        else:
-            print("No new datasets")
+            else:
+                print("No new datasets")
+            db.execute("DELETE * FROM aws_10min_last_update")
+            db.execute("INSERT INTO aws_10min_last_update VALUE (%s)", (date.today(),))
+
     except Exception as error:
         print("Error updating AWS table.")
         print(error)
@@ -141,4 +144,5 @@ def rebuild_aws_table():
 if __name__ == "__main__":
     print(f"{datetime.now()}\tStarting AWS database update")
     rebuild_aws_table()
+    test.test_all()
     print(f"{datetime.now()}\tDone")
