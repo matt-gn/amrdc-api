@@ -13,7 +13,7 @@ CREATE TABLE IF NOT EXISTS aws_10min (
 );
 
 CREATE TABLE IF NOT EXISTS aws_10min_last_update (
-    last_update DATE
+    last_update TIMESTAMP
 );
 
 CREATE TABLE IF NOT EXISTS aws_realtime (

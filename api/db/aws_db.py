@@ -68,18 +68,23 @@ def init_aws_table() -> None:
     try:
         with postgres:
             db = postgres.cursor()
+            db.execute("INSERT INTO aws_10min_last_update (last_update) VALUES (NOW()::timestamp)")
             for resource_list in get_resource_urls():
                 formatted_data = tuple(data for resource in resource_list
                                        for data in process_datafile(resource))
                 db.executemany("INSERT INTO aws_10min VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s)",
                                formatted_data)
-            db.execute("INSERT INTO aws_10min_last_update (last_update) VALUES (CURRENT_DATE)")
     except Exception as error:
         print("Error building AWS table.")
         print(error)
 
-## TODO Test this!
 def get_new_resource_list() -> list:
+    with postgres:
+        db = postgres.cursor()
+        db.execute("SELECT last_update FROM aws_10min_last_update")
+        cutoff_date = db.fetchall()[0][0]
+        db.execute("DELETE FROM aws_10min_last_update")
+        db.execute("INSERT INTO aws_10min_last_update (last_update) VALUES (NOW()::timestamp)")
     API_URL = ('https://amrdcdata.ssec.wisc.edu/api/action/package_search?q='\
                'title:"quality-controlled+observational+data"&rows=1000')
     global http
@@ -87,14 +92,10 @@ def get_new_resource_list() -> list:
     results = response.json()
     datasets = results['result']['results']
     new_datasets = []
-    with postgres:
-        db = postgres.cursor()
-        db.execute("SELECT last_update FROM aws_10min_last_update")
-        cutoff_date = db.fetchall()[0][0]
     for dataset in datasets:
         for resource in dataset['resources']:
             if "10min" in resource["name"]:
-                last_modified = datetime.strptime(resource['last_modified'], '%Y-%m-%dT%H:%M:%S.%f').date()
+                last_modified = datetime.strptime(resource['last_modified'], '%Y-%m-%dT%H:%M:%S.%f')
                 if last_modified > cutoff_date:
                     name = dataset['title'].split(' Automatic Weather Station')[0]
                     url = resource['url']
@@ -134,8 +135,6 @@ def rebuild_aws_table():
                         db.execute(insert_statement, data)
             else:
                 print("No new datasets")
-            db.execute("DELETE FROM aws_10min_last_update")
-            db.execute("INSERT INTO aws_10min_last_update (last_update) VALUES (CURRENT_DATE)")
     except Exception as error:
         print("Error updating AWS table.")
         print(error)
