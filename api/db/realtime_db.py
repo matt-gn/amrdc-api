@@ -113,16 +113,16 @@ def update_realtime_table():
                                              %(humidity)s,
                                              %(region)s))
                                       AS source(station_name, date, time, temperature, pressure, 
-                                                wind_speed, wind_direction, humidity, delta_t)
+                                                wind_speed, wind_direction, humidity, region)
                                       ON (target.station_name = source.station_name 
                                           AND target.date = source.date
                                           AND target.time = source.time)
                                       WHEN NOT MATCHED THEN
                                           INSERT (station_name, date, time, temperature, pressure,
-                                                  wind_speed, wind_direction, humidity, delta_t)
+                                                  wind_speed, wind_direction, humidity, region)
                                           VALUES (source.station_name, source.date, source.time,
                                                   source.temperature, source.pressure, source.wind_speed,
-                                                  source.wind_direction, source.humidity, source.delta_t)""", row)
+                                                  source.wind_direction, source.humidity, source.region)""", row)
 
 if __name__ == "__main__":
     print(f"{datetime.now()}\tStarting realtime database update")
