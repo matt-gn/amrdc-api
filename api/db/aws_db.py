@@ -134,7 +134,7 @@ def rebuild_aws_table():
                                                     source.temperature, source.pressure, source.wind_speed,
                                                     source.wind_direction, source.humidity, source.delta_t)"""
                     for line in data:
-                        db.execute(insert_statement, data)
+                        db.execute(insert_statement, line)
             else:
                 print("No new datasets")
     except Exception as error:
