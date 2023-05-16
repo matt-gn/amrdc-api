@@ -37,7 +37,7 @@ class TestAWS(TestCase):
         stations_list = query_database("SELECT DISTINCT(station_name) FROM aws_10min ORDER BY station_name")
         self.assertTrue(stations_list['data'] != [])
         years_list = query_database("SELECT DISTINCT(date_part('year', date)) as date FROM aws_10min ORDER BY date")
-        self.assertTrue(years_list['data'] !- [])
+        self.assertTrue(years_list['data'] != [])
 
         test_result = query_database("""SELECT * FROM aws_10min
                                         WHERE station_name = 'Byrd' 
