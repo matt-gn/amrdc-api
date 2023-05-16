@@ -12,8 +12,6 @@ CREATE TABLE IF NOT EXISTS aws_10min (
     delta_t REAL
 );
 
-ALTER TABLE aws_10min ADD CONSTRAINT unique_datapoint UNIQUE (station_name, date, time);
-
 CREATE TABLE IF NOT EXISTS aws_realtime (
     station_name VARCHAR(18),
     date DATE,
@@ -25,5 +23,3 @@ CREATE TABLE IF NOT EXISTS aws_realtime (
     humidity REAL,
     region VARCHAR(24)
 );
-
-ALTER TABLE aws_realtime ADD CONSTRAINT unique_datapoint UNIQUE (station_name, date, time);
