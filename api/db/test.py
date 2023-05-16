@@ -71,7 +71,7 @@ class TestRealtime(TestCase):
 
 def test_db():
     result = TestResult()
-    suite = TestLoader().loadTestsFromTestCase(test.TestAWS)
+    suite = TestLoader().loadTestsFromTestCase(TestAWS)
     suite.run(result)
     text_result = TextTestResult(result, descriptions=True, verbosity=2)
     # Print out the test results
@@ -80,7 +80,7 @@ def test_db():
 
 def verify_db():
     result = TestResult()
-    suite = TestLoader().loadTestsFromTestCase(test.TestAWS)
+    suite = TestLoader().loadTestsFromTestCase(TestAWS)
     suite.run(result)
     return result.wasSuccessful()
 
