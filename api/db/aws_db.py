@@ -2,6 +2,7 @@
 import urllib3
 from datetime import datetime
 from config import postgres
+import test
 
 ## Define HTTP connection pool manager
 http = urllib3.PoolManager()
@@ -143,3 +144,4 @@ if __name__ == "__main__":
     print(f"{datetime.now()}\tStarting AWS database update")
     rebuild_aws_table()
     print(f"{datetime.now()}\tDone")
+    test.test_all()
