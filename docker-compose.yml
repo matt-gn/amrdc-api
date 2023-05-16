@@ -7,6 +7,11 @@ services:
     volumes:
       - ./init.sql:/docker-entrypoint-initdb.d/init.sql
       - ./postgres-data:/var/lib/postgresql/data
+    healthcheck:
+      - test: ["CMD-SHELL", "pg_isready -U amrdc_api"]
+      - interval: 5s
+      - timeout: 10s
+      - retries: 3
   web_service:
     build: .
     env_file:
@@ -14,4 +19,5 @@ services:
     ports:
       - "8000:8000"
     depends_on:
-      - db
+      db:
+        condition: service_healthy 

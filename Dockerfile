@@ -11,7 +11,6 @@ RUN pip install --no-cache-dir --upgrade -r /requirements.txt
 
 # Set cronjobs: aws_db, realtime_db, make_gifs
 COPY ./api/cron /var/spool/cron/crontabs/root
-RUN crond
 
 # Copy code to container
 COPY ./api /api
@@ -20,7 +19,7 @@ COPY ./api /api
 RUN chmod +x /api/db/init.py /api/db/aws_db.py /api/db/realtime_db.py /api/make_gifs.py /api/startup.sh
 
 # Run startup script
-CMD ["/api/startup.sh"]
+ENTRYPOINT ["/api/startup.sh"]
 
 # Labels
 LABEL org.label-schema.schema-version="1.0"

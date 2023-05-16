@@ -1,5 +1,5 @@
 #!/bin/sh
-sleep 20
+crond
 cd /api
 python make_gifs.py
 python db/init.py
