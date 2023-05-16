@@ -54,7 +54,7 @@ ARGOS: tuple = (
 
 def get_data_url(argos_id: str):
     """Helper method that returns URLs for the Argos data"""
-    return f"https://amrc.ssec.wisc.edu/data/surface/awstext/{argos_id}.txt"
+    return f"http://amrc.ssec.wisc.edu/data/surface/awstext/{argos_id}.txt"
 
 
 def read_data(url: str) -> list | None:
@@ -112,7 +112,7 @@ def update_realtime_table():
                                 %(wind_direction)s,
                                 %(humidity)s,
                                 %(region)s)
-                           ON CONFLICT (station_name, date, time) DO NOTHING""", params)
+                           ON CONFLICT (station_name, date, time) DO NOTHING""", row)
 
 if __name__ == "__main__":
     print(f"{datetime.now()}\tStarting realtime database update")
