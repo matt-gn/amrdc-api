@@ -1,4 +1,5 @@
 #!/bin/sh
+sleep 10
 crond
 cd /api
 python make_gifs.py
