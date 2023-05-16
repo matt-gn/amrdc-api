@@ -1,8 +1,7 @@
 """Initialize/rebuild the historical AWS database tables for the AMRDC AWS API"""
 import urllib3
-from datetime import datetime, date
+from datetime import datetime
 from config import postgres
-import test
 
 ## Define HTTP connection pool manager
 http = urllib3.PoolManager()
@@ -74,7 +73,7 @@ def init_aws_table() -> None:
                                        for data in process_datafile(resource))
                 db.executemany("INSERT INTO aws_10min VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s)",
                                formatted_data)
-            db.execute("INSERT INTO aws_10min_last_update VALUE (%s)", (date.today(),))
+            db.execute("INSERT INTO aws_10min_last_update (last_update) VALUE (CURRENT_DATE)")
     except Exception as error:
         print("Error building AWS table.")
         print(error)
@@ -135,8 +134,7 @@ def rebuild_aws_table():
             else:
                 print("No new datasets")
             db.execute("DELETE * FROM aws_10min_last_update")
-            db.execute("INSERT INTO aws_10min_last_update VALUE (%s)", (date.today(),))
-
+            db.execute("INSERT INTO aws_10min_last_update (last_update) VALUE (CURRENT_DATE)")
     except Exception as error:
         print("Error updating AWS table.")
         print(error)
@@ -144,5 +142,4 @@ def rebuild_aws_table():
 if __name__ == "__main__":
     print(f"{datetime.now()}\tStarting AWS database update")
     rebuild_aws_table()
-    test.test_all()
     print(f"{datetime.now()}\tDone")

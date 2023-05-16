@@ -19,5 +19,4 @@ if __name__ == "__main__":
     print(f"{datetime.now()}\tStarting Realtime database build")
     update_realtime_table()
     print(f"{datetime.now()}\tDone")
-    test.test_all()
     print(f"{datetime.now()}\tStarting application")
