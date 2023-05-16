@@ -59,15 +59,13 @@ class TestRealtime(TestCase):
                                           ('wind_speed', 'real'),
                                           ('wind_direction', 'real'),
                                           ('region', 'character varying'),
-                                          ('latitude', 'character varying'),
-                                          ('longitude', 'character varying'),
                                           ('station_name', 'character varying')]}
         schema_query = """select column_name, data_type from information_schema.columns
                           where table_name = 'aws_realtime'"""
         self.assertEqual(query_database(schema_query), aws_realtime_schema)
         test_result = query_database("SELECT * FROM aws_realtime")
         self.assertEqual(len(test_result), 2)
-        header = ('station_name', 'date', 'time', 'temperature', 'pressure', 'wind_speed', 'wind_direction', 'humidity', 'latitude', 'longitude', 'region')
+        header = ('station_name', 'date', 'time', 'temperature', 'pressure', 'wind_speed', 'wind_direction', 'humidity', 'region')
         self.assertEqual(test_result['header'], header)
         self.assertGreater(len(test_result['data']), 0)
 

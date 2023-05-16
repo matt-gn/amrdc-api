@@ -1,7 +1,6 @@
 """Initialize/rebuild the historical AWS database tables for the AMRDC AWS API"""
 import urllib3
-from datetime import datetime, date, timedelta
-from json import loads as json_loads
+from datetime import datetime, date
 from config import postgres
 
 ## Define HTTP connection pool manager
@@ -78,7 +77,7 @@ def init_aws_table() -> None:
         print("Error building AWS table.")
         print(error)
 
-
+## TODO Test this!
 def get_new_resource_list() -> list:
     API_URL = ('https://amrdcdata.ssec.wisc.edu/api/action/package_search?q='\
                'title:"quality-controlled+observational+data"&rows=1000')
@@ -87,7 +86,9 @@ def get_new_resource_list() -> list:
     results = response.json()
     datasets = results['result']['results']
     new_datasets = []
-    cutoff_date = date.today() - timedelta(days=7)
+    with postgres:
+        db = postgres.cursor()
+        cutoff_date = db.execute("SELECT last_update FROM aws_10min_last_update").fetchall()[0]
     for dataset in datasets:
         for resource in dataset['resources']:
             if "10min" in resource["name"]:
@@ -95,7 +96,7 @@ def get_new_resource_list() -> list:
                 if last_modified > cutoff_date:
                     name = dataset['title'].split(' Automatic Weather Station')[0]
                     url = resource['url']
-                    new_datasets.append(tuple(name, url))
+                    new_datasets.append((name, url))
     return new_datasets
 
 def rebuild_aws_table():
@@ -129,6 +130,8 @@ def rebuild_aws_table():
                     db = postgres.cursor()
                     for line in data:
                         db.execute(insert_statement, data)
+                        db.execute("DELETE * FROM aws_10min_last_update")
+                        db.execute("INSERT INTO aws_10min_last_update VALUE (%s)", (date.today(),))
         else:
             print("No new datasets")
     except Exception as error:

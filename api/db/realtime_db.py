@@ -91,6 +91,7 @@ def process_datapoint(station_name: str, region: str, data: list) -> dict:
     except Exception as e:
         print(f"Could not process datapoint: {station_name}\n{data}")
         print(e)
+        return None
 
 def update_realtime_table():
     with postgres:
@@ -102,7 +103,7 @@ def update_realtime_table():
             params = tuple(process_datapoint(station_name, region, row) for row in data)
             with postgres:
                 db = postgres.cursor()
-                for row in params:
+                for row in (row for row in params if row is not None):
                     db.execute("""MERGE INTO aws_realtime AS target
                                 USING (VALUES (%(station_name)s,
                                                 %(date)s,

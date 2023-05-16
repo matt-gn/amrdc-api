@@ -10,10 +10,7 @@ COPY ./requirements.txt /requirements.txt
 RUN pip install --no-cache-dir --upgrade -r /requirements.txt
 
 # Set cronjobs: aws_db, realtime_db, make_gifs
-COPY ./api/cron /etc/cron.d/cron
-RUN chmod 0644 /etc/cron.d/cron
-RUN crontab /etc/cron.d/cron
-RUN ln -s /dev/stdout /var/log/cron
+COPY ./api/cron /var/spool/cron/crontabs/root
 RUN crond
 
 # Copy code to container

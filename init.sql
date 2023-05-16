@@ -12,6 +12,10 @@ CREATE TABLE IF NOT EXISTS aws_10min (
     delta_t REAL
 );
 
+CREATE TABLE IF NOT EXISTS aws_10min_last_update (
+    last_update DATE
+);
+
 CREATE TABLE IF NOT EXISTS aws_realtime (
     station_name VARCHAR(18),
     date DATE,
