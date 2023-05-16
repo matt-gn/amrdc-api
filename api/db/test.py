@@ -1,4 +1,4 @@
-from unittest import TestCase, main as test_all
+from unittest import TestCase, TestResult, TestLoader, TextTestResult, main as test_all
 from typing import Tuple
 from config import postgres
 
@@ -68,6 +68,21 @@ class TestRealtime(TestCase):
         header = ('station_name', 'date', 'time', 'temperature', 'pressure', 'wind_speed', 'wind_direction', 'humidity', 'region')
         self.assertEqual(test_result['header'], header)
         self.assertGreater(len(test_result['data']), 0)
+
+def test_db():
+    result = TestResult()
+    suite = TestLoader().loadTestsFromTestCase(test.TestAWS)
+    suite.run(result)
+    text_result = TextTestResult(result, descriptions=True, verbosity=2)
+    # Print out the test results
+    text_result.printErrors()  # Print errors and failures
+    text_result.printSummary()  # Print the summary of the test results
+
+def verify_db():
+    result = TestResult()
+    suite = TestLoader().loadTestsFromTestCase(test.TestAWS)
+    suite.run(result)
+    return result.wasSuccessful()
 
 if __name__ == "__main__":
     test_all()

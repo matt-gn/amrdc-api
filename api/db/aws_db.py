@@ -144,4 +144,4 @@ if __name__ == "__main__":
     print(f"{datetime.now()}\tStarting AWS database update")
     rebuild_aws_table()
     print(f"{datetime.now()}\tDone")
-    test.test_all()
+    test.test_db()
