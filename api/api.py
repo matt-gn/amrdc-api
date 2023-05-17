@@ -24,7 +24,7 @@ app.mount("/static", StaticFiles(directory="static"), name="static")
 ################################################################################
 ## Each of the following functions exposes an HTTP-accessible API endpoint to ##
 ## execute a SQL query and return data via JSON. We are using psycopg2 to     ##
-## generate queries and access Postgres. The database is set to READ-ONLY.    ##
+## generate queries and access Postgres. The client db user is  READ-ONLY.    ##
 ################################################################################
                 ###########################################
                 ###  REALTIME AWS DATA  : `/realtime`   ###
