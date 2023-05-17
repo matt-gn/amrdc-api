@@ -30,6 +30,21 @@ Setting `download=True` will initiate a streaming object with the requested data
 
 Responses are limited to 10k lines.
 
+Examples:
+
+```
+
+## All data for Byrd station between 2020/01/01 and 2020/12/31 at 3 hr. intervals
+localhost:8000/aws/data?query_type=all&stations=Byrd&interval=300&startdate=20200101&enddate=20201231
+
+## Monthly maximum temperature for Margaret and Nico stations from 2015/01/01 to 2016/12/31
+localhost:8000/aws/data?query_type=max&stations=Margaret,Nico&startdate=20150101&enddate=20161231&variable=temperature&grouping=month
+
+## Historical average temperature for AGO-4 and AGO-5
+localhost:8000/aws/data?query_type=mean&stations=AGO-4,AGO-5&variable=temperature&grouping=station
+
+```
+
 ### List AWS stations & years: `/aws/list`
 
 Returns a JSON object with a list of AWS stations and years with available data.
