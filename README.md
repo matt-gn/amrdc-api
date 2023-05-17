@@ -2,7 +2,7 @@
 
 ## Installation
 
-- Copy `.env.sample` to `.env` and supply passwords for main user and (read-only) client.
+- Copy `.env.sample` to `.env` and supply password for main user.
 - `docker compose build` followed by `docker compose up -d`.
 - The API application is mapped to port 8000 on host machine by default. You can change the port on the host machine in `docker-compose.yml` via the `ports` variable.
 - The database build process takes a long time. It will only rebuild when the application detects an update to the data repo.

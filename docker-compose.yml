@@ -5,7 +5,7 @@ services:
     env_file:
       - .env
     volumes:
-      - ./initdb.sh:/docker-entrypoint-initdb.d/initdb.sh
+      - ./initdb.sql:/docker-entrypoint-initdb.d/initdb.sql
       - ./postgres-data:/var/lib/postgresql/data
   web_service:
     build: .
