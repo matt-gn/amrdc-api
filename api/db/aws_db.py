@@ -77,68 +77,53 @@ def init_aws_table() -> None:
                 db.executemany("INSERT INTO aws_10min VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s)",
                                formatted_data)
     except Exception as error:
-        print("Error building AWS table.")
+        print("Error initializing AWS table.")
         print(error)
 
-def get_new_resource_list() -> list:
+def new_resources() -> bool:
     with postgres:
         db = postgres.cursor()
         db.execute("SELECT last_update FROM aws_10min_last_update")
         cutoff_date = db.fetchall()[0][0]
-        db.execute("DELETE FROM aws_10min_last_update")
-        db.execute("INSERT INTO aws_10min_last_update (last_update) VALUES (NOW()::timestamp)")
-    API_URL = ('https://amrdcdata.ssec.wisc.edu/api/action/package_search?q='\
-               'title:"quality-controlled+observational+data"&rows=1000')
+    API_URL = 'https://amrdcdata.ssec.wisc.edu/api/3/action/recently_changed_packages_activity_list'
     global http
     response = http.request("GET", API_URL, retries=3)
     results = json.loads(response.data)
-    datasets = results['result']['results']
-    new_datasets = []
-    for dataset in datasets:
-        for resource in dataset['resources']:
-            if "10min" in resource["name"]:
-                last_modified = datetime.strptime(resource['last_modified'], '%Y-%m-%dT%H:%M:%S.%f')
-                if last_modified > cutoff_date:
-                    name = dataset['title'].split(' Automatic Weather Station')[0]
-                    url = resource['url']
-                    new_datasets.append((name, url))
-    return new_datasets
+    repo_timestamp = results['result'][0]['timestamp']
+    last_modified = datetime.strptime(repo_timestamp, '%Y-%m-%dT%H:%M:%S.%f')
+    if last_modified > cutoff_date:
+        return True
+    return False
 
 def rebuild_aws_table():
     try:
-        new_datasets = get_new_resource_list()
-        with postgres:
-            db = postgres.cursor()
-            if new_datasets:
-                for dataset in new_datasets:
-                ## Capture new rows while updating hash collisions
-                    data = process_datafile(dataset)
-                    insert_statement = """MERGE INTO aws_10min AS target
-                                        USING (VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s))
-                                        AS source(station_name, date, time, temperature, pressure, 
-                                                    wind_speed, wind_direction, humidity, delta_t)
-                                        ON (target.station_name = source.station_name 
-                                            AND target.date = source.date
-                                            AND target.time = source.time)
-                                        WHEN MATCHED THEN
-                                            UPDATE SET temperature = source.temperature,
-                                                        pressure = source.pressure,
-                                                        wind_speed = source.wind_speed,
-                                                        wind_direction = source.wind_direction,
-                                                        humidity = source.humidity,
-                                                        delta_t = source.delta_t
-                                        WHEN NOT MATCHED THEN
-                                            INSERT (station_name, date, time, temperature, pressure,
-                                                    wind_speed, wind_direction, humidity, delta_t)
-                                            VALUES (source.station_name, source.date, source.time,
-                                                    source.temperature, source.pressure, source.wind_speed,
-                                                    source.wind_direction, source.humidity, source.delta_t)"""
-                    for line in data:
-                        db.execute(insert_statement, line)
-            else:
-                print("No new datasets")
+        if new_resources():
+            print("New resources available from data repo")
+            with postgres:
+                db = postgres.cursor()
+                db.execute("""CREATE TABLE aws_10min_rebuild (
+                            station_name VARCHAR(18),
+                            date DATE,
+                            time TIME,
+                            temperature REAL,
+                            pressure REAL,
+                            wind_speed REAL,
+                            wind_direction REAL,
+                            humidity REAL,
+                            delta_t REAL)""")
+                db.execute("DELETE FROM aws_10min_last_update")
+                db.execute("INSERT INTO aws_10min_last_update (last_update) VALUES (NOW()::timestamp)")
+                for resource_list in get_resource_urls():
+                    formatted_data = tuple(data for resource in resource_list
+                                        for data in process_datafile(resource))
+                    db.executemany("INSERT INTO aws_10min_rebuild VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s)",
+                                formatted_data)
+                db.execute("DROP TABLE aws_10min")
+                db.execute("ALTER TABLE aws_10min_rebuild RENAME TO aws_10min")
+        else:
+            print("No new resources available from data repo")
     except Exception as error:
-        print("Error updating AWS table.")
+        print("Error rebuilding AWS table.")
         print(error)
 
 if __name__ == "__main__":

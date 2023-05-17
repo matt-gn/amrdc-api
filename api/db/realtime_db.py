@@ -93,10 +93,7 @@ def process_datapoint(station_name: str, region: str, data: list) -> dict:
         print(e)
         return None
 
-def update_realtime_table():
-    with postgres:
-        db = postgres.cursor()
-        db.execute("DELETE FROM aws_realtime WHERE date < current_date - interval '30 days'")
+def init_realtime_table():
     for (aws, station_name, region) in ARGOS:
         data = read_data(get_data_url(aws))
         if data:
@@ -104,29 +101,46 @@ def update_realtime_table():
             with postgres:
                 db = postgres.cursor()
                 for row in (row for row in params if row is not None):
-                    db.execute("""MERGE INTO aws_realtime AS target
-                                USING (VALUES (%(station_name)s,
-                                                %(date)s,
-                                                %(time)s,
-                                                %(temperature)s,
-                                                %(pressure)s,
-                                                %(wind_speed)s,
-                                                %(wind_direction)s,
-                                                %(humidity)s,
-                                                %(region)s))
-                                        AS source(station_name, date, time, temperature, pressure, 
-                                                    wind_speed, wind_direction, humidity, region)
-                                        ON (target.station_name = source.station_name 
-                                            AND target.date = source.date
-                                            AND target.time = source.time)
-                                        WHEN NOT MATCHED THEN
-                                            INSERT (station_name, date, time, temperature, pressure,
-                                                    wind_speed, wind_direction, humidity, region)
-                                            VALUES (source.station_name, source.date, source.time,
-                                                    source.temperature, source.pressure, source.wind_speed,
-                                                    source.wind_direction, source.humidity, source.region)""", row)
+                    db.execute("""INSERT INTO aws_realtime VALUES (%(station_name)s,
+                                                                   %(date)s,
+                                                                   %(time)s,
+                                                                   %(temperature)s,
+                                                                   %(pressure)s,
+                                                                   %(wind_speed)s,
+                                                                   %(wind_direction)s,
+                                                                   %(humidity)s,
+                                                                   %(region)s)""", row)
+
+def rebuild_realtime_table():
+    with postgres:
+        db = postgres.cursor()
+        db.execute("""CREATE TABLE aws_realtime_rebuild (station_name VARCHAR(18),
+                                                 date DATE,
+                                                 time TIME,
+                                                 temperature REAL,
+                                                 pressure REAL,
+                                                 wind_speed REAL,
+                                                 wind_direction REAL,
+                                                 humidity REAL,
+                                                 region VARCHAR(24))""")
+        for (aws, station_name, region) in ARGOS:
+            data = read_data(get_data_url(aws))
+            if data:
+                params = tuple(process_datapoint(station_name, region, row) for row in data)
+                for row in (row for row in params if row is not None):
+                    db.execute("""INSERT INTO aws_realtime_rebuild VALUES (%(station_name)s,
+                                                                           %(date)s,
+                                                                           %(time)s,
+                                                                           %(temperature)s,
+                                                                           %(pressure)s,
+                                                                           %(wind_speed)s,
+                                                                           %(wind_direction)s,
+                                                                           %(humidity)s,
+                                                                           %(region)s)""", row)
+        db.execute("DROP TABLE aws_realtime")
+        db.execute("ALTER TABLE aws_realtime_rebuild RENAME TO aws_realtime")
 
 if __name__ == "__main__":
     print(f"{datetime.now()}\tStarting realtime database update")
-    update_realtime_table()
+    rebuild_realtime_table()
     print(f"{datetime.now()}\tDone")
