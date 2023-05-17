@@ -1,4 +1,5 @@
 #!/bin/sh
+
 sleep 10
 cd /api
 python make_gifs.py
