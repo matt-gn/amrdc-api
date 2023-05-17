@@ -85,11 +85,21 @@ def new_resources() -> bool:
         db = postgres.cursor()
         db.execute("SELECT last_update FROM aws_10min_last_update")
         cutoff_date = db.fetchall()[0][0]
+##  API_URL = ('https://amrdcdata.ssec.wisc.edu/api/action/package_search?q='\
+##             'title:"quality-controlled+observational+data"&sort=metadata_modified+desc&rows=1')
+##  global http
+##  response = http.request("GET", API_URL, retries=3)
+##  results = json.loads(response.data)
+##  timestamps = [resource['last_modified'] for resource in results['result']['results'][0]['resources']]
+##  newest_resource = sorted(timestamps, reverse=True)[0]
+##  last_modified = datetime.strptime(newest_resource, '%Y-%m-%dT%H:%M:%S.%f')
+##  if last_modified > cutoff_date:
+##      return True
     API_URL = 'https://amrdcdata.ssec.wisc.edu/api/3/action/recently_changed_packages_activity_list'
-    global http
-    response = http.request("GET", API_URL, retries=3)
+    global http                                         ## TODO: Just do basic search + sort by recent modified
+    response = http.request("GET", API_URL, retries=3)  ## TODO: Limit 1
     results = json.loads(response.data)
-    repo_timestamp = results['result'][0]['timestamp']
+    repo_timestamp = results['result'][0]['timestamp']  ## NOTE: This is not filtered to QC AWS data
     last_modified = datetime.strptime(repo_timestamp, '%Y-%m-%dT%H:%M:%S.%f')
     if last_modified > cutoff_date:
         return True
