@@ -41,7 +41,7 @@ localhost:8000/aws/data?query_type=all&stations=Byrd&interval=300&startdate=2020
 localhost:8000/aws/data?query_type=max&stations=Margaret,Nico&startdate=20150101&enddate=20161231&variable=temperature&grouping=month
 
 ## Historical minimum temperature for AGO-4 and AGO-5
-localhost:8000/aws/data?query_type=min&stations=AGO-4,AGO-5&variable=temperature&grouping=station
+localhost:8000/aws/data?query_type=min&stations=AGO-5&variable=temperature&grouping=station
 
 ```
 
