@@ -85,16 +85,27 @@ def new_resources() -> bool:
         db = postgres.cursor()
         db.execute("SELECT last_update FROM aws_10min_last_update")
         cutoff_date = db.fetchall()[0][0]
-    API_URL = ('https://amrdcdata.ssec.wisc.edu/api/action/package_search?q='\
-               'title:"quality-controlled+observational+data"&sort=metadata_modified+desc&rows=1')
+    PACKAGE_SEARCH = ('https://amrdcdata.ssec.wisc.edu/api/action/package_search?q='\
+                      'title:"quality-controlled+observational+data"&sort=metadata_modified+desc&rows=1')
     global http
-    response = http.request("GET", API_URL, retries=3)
+    response = http.request("GET", PACKAGE_SEARCH, retries=3)
     results = json.loads(response.data)
     timestamps = [resource['last_modified'] for resource in results['result']['results'][0]['resources']]
     newest_resource = sorted(timestamps, reverse=True)[0]
     last_modified = datetime.strptime(newest_resource, '%Y-%m-%dT%H:%M:%S.%f')
     if last_modified > cutoff_date:
         return True
+    
+    UPDATE_STREAM = 'https://amrdcdata.ssec.wisc.edu/api/3/action/recently_changed_packages_activity_list?limit=100'
+    response = http.request("GET", UPDATE_STREAM, retries=3)
+    results = json.loads(response.data)
+    for dataset in results['result']:
+        if 'quality-controlled observational data' in dataset['data']['package']['title']:
+            last_modified = datetime.strptime(dataset['timestamp'], '%Y-%m-%dT%H:%M:%S.%f')
+            if last_modified > cutoff_date:
+                return True
+            return False
+    
     return False
 
 def rebuild_aws_table():
