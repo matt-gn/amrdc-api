@@ -49,7 +49,7 @@ def current_maxmin_endpoint(variable: str) -> JSONResponse:
 
 @app.get("/realtime/station_list")
 def station_list_endpoint() -> JSONResponse:
-    query = """SELECT station_name, region
+    query = """SELECT DISTINCT(station_name), region
                FROM aws_realtime ORDER BY region, station_name"""
     query_results = query_database(query)["data"]
     station_dict = {}
@@ -58,14 +58,14 @@ def station_list_endpoint() -> JSONResponse:
     return JSONResponse(content=station_dict)
 
 
-@app.get("/realtime/station/{stations}")
-def current_station_data_endpoint(stations: str) -> JSONResponse:
-    query_list = tuple(station.replace('%20', ' ') for station in stations.split(','))
-    query = ("""SELECT station_name, TO_CHAR(date, 'YYYY-MM-DD'), TO_CHAR(time, 'HH24:MI:SS'),
-                temperature, pressure, wind_speed, wind_direction, humidity, latitude, longitude
-                FROM aws_realtime 
-                WHERE station_name IN %s ORDER BY station_name""", (query_list,))
-    query_results = query_database(query[0], query[1])["data"]
+@app.get("/realtime/station/{station}")
+def current_station_data_endpoint(station: str) -> JSONResponse:
+    query = """SELECT station_name, TO_CHAR(date, 'YYYY-MM-DD') as date,
+                TO_CHAR(time, 'HH24:MI:SS') as time, temperature, pressure,
+                wind_speed, wind_direction, humidity
+                FROM aws_realtime
+                WHERE station_name = %s ORDER BY date DESC, time DESC LIMIT 1"""
+    query_results = query_database(query, (station,))["data"]
     return JSONResponse(content=query_results)
 
 
@@ -88,7 +88,7 @@ def current_station_data_endpoint(stations: str) -> JSONResponse:
 @app.get("/aws/list")
 def list_stations_and_years_endpoint() -> JSONResponse:
     stations_list_query = "SELECT DISTINCT(station_name) FROM aws_10min ORDER BY station_name"
-    years_list_query = "SELECT DISTINCT(date_part('year', date)) as date FROM aws_10min ORDER BY date"
+    years_list_query = "SELECT DISTINCT(date_part('year', date)::int) as date FROM aws_10min ORDER BY date"
     stations = query_database(stations_list_query)
     years = query_database(years_list_query)
     data = {
@@ -101,7 +101,7 @@ def list_stations_and_years_endpoint() -> JSONResponse:
 @app.get("/aws/list/stations={stations}")
 def list_station_years_endpoint(stations: str) -> JSONResponse:
     station_list = tuple(station.replace('%20', ' ') for station in stations.split(','))
-    query = ("""SELECT DISTINCT(date_part('year', date)) as date
+    query = ("""SELECT DISTINCT(date_part('year', date)::int) as date
              FROM aws_10min WHERE station_name IN %s ORDER BY date""", (station_list,))
     data = query_database(query[0], query[1])["data"]
     return JSONResponse(content=data)
@@ -117,14 +117,14 @@ def list_yearly_stations_endpoint(years: str) -> JSONResponse:
 
 
 @app.get("/aws/data")
-def query_data_endpoint(query_type: str = "all",        ## Default: return 'all' datapoints
+def query_data_endpoint(query_type: str = "all",
                         stations: str = None,
-                        interval: int = 2400,           ## Default: daily intervals
-                        startdate: str = "19000101",    ## Default to 'any' time period
+                        interval: int = 2400,
+                        startdate: str = "19000101",
                         enddate: str = "99991231",
                         variable: str = None,
                         grouping: str = None,
-                        download: bool = False) -> JSONResponse or StreamingResponse:    ## Default: Display data
+                        download: bool = False) -> JSONResponse or StreamingResponse:
     input_error = verify_input(query_type, stations, variable, grouping)
     if input_error:
         return JSONResponse({'error': input_error})
