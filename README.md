@@ -9,8 +9,7 @@
 
 ## API endpoints
 
-### AWS Data query
-`/aws/data"`
+### AWS Data query: `/aws/data`
 Parameters: query_type: str (default="all"), stations: str, interval: int (default=2400), startdate: int (default=any), enddate: int (default=any), variable: str, grouping: str, download: bool (default=False)
 
 Returns a JSON object with query results contained in 'header' and 'data' keys.
@@ -31,38 +30,33 @@ Setting `download=True` will initiate a streaming object with the requested data
 
 Responses are limited to 10k lines.
 
-### List AWS stations & years
-`/aws/list"`
+### List AWS stations & years: `/aws/list`
 Parameters: None
 
 Returns a JSON object with a list of AWS stations and years with available data.
 
-### List years per AWS station(s)
-`/aws/list/stations={stations}"`
+### List years per AWS station(s): `/aws/list/stations={stations}`
 Parameters: stations: str
 
 Returns a JSON object with a list of years covered by the supplied station list.
 
 `stations` accepts a comma-separated list of AWS station names.
 
-### List AWS stations per year(s)
-`/aws/list/years={years}"`
+### List AWS stations per year(s): `/aws/list/years={years}`
 Parameters: years: str
 
 Returns a JSON object with a list of stations with available data within the span of any of the supplied years.
 
 `years` accepts a comma-separated list of years.
 
-### Realtime data per station(s)
-`/realtime/station/{stations}"`
+### Realtime data per station(s): `/realtime/station/{stations}`
 Parameters: stations: str
 
 Returns the most recent datapoint for each supplied station.
 
 `stations` accepts a comma-separated list of AWS station names.
 
-### Realtime max/min readings
-`/realtime/maxmin/{variable}"`
+### Realtime max/min readings: `/realtime/maxmin/{variable}`
 Parameters: variable: str
 
 Returns the current maximum and minumum datapoints from all realtime data.
@@ -70,8 +64,7 @@ Returns the current maximum and minumum datapoints from all realtime data.
 Valid entries:
 `variable`: "temperature", "pressure", "wind_speed", "wind_direction", "humidity", "delta_t"
 
-### Daily max/min readings
-`/realtime/daily-maxmin/{variable}"`
+### Daily max/min readings: `/realtime/daily-maxmin/{variable}`
 Parameters: variable: str
 
 Returns the daily maximum and minumum datapoints from all realtime data.
@@ -79,8 +72,7 @@ Returns the daily maximum and minumum datapoints from all realtime data.
 Valid entries:
 `variable`: "temperature", "pressure", "wind_speed", "wind_direction", "humidity", "delta_t"
 
-### Realtime station list
-`/realtime/station_list"`
+### Realtime station list: `/realtime/station_list`
 Parameters: None
 
 Returns a JSON object with a list of realtime AWS stations with available data.
