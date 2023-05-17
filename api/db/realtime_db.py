@@ -94,51 +94,59 @@ def process_datapoint(station_name: str, region: str, data: list) -> dict:
         return None
 
 def init_realtime_table():
-    for (aws, station_name, region) in ARGOS:
-        data = read_data(get_data_url(aws))
-        if data:
-            params = tuple(process_datapoint(station_name, region, row) for row in data)
-            with postgres:
-                db = postgres.cursor()
-                for row in (row for row in params if row is not None):
-                    db.execute("""INSERT INTO aws_realtime VALUES (%(station_name)s,
-                                                                   %(date)s,
-                                                                   %(time)s,
-                                                                   %(temperature)s,
-                                                                   %(pressure)s,
-                                                                   %(wind_speed)s,
-                                                                   %(wind_direction)s,
-                                                                   %(humidity)s,
-                                                                   %(region)s)""", row)
-
-def rebuild_realtime_table():
-    with postgres:
-        db = postgres.cursor()
-        db.execute("""CREATE TABLE aws_realtime_rebuild (station_name VARCHAR(18),
-                                                 date DATE,
-                                                 time TIME,
-                                                 temperature REAL,
-                                                 pressure REAL,
-                                                 wind_speed REAL,
-                                                 wind_direction REAL,
-                                                 humidity REAL,
-                                                 region VARCHAR(24))""")
+    try:
         for (aws, station_name, region) in ARGOS:
             data = read_data(get_data_url(aws))
             if data:
                 params = tuple(process_datapoint(station_name, region, row) for row in data)
-                for row in (row for row in params if row is not None):
-                    db.execute("""INSERT INTO aws_realtime_rebuild VALUES (%(station_name)s,
-                                                                           %(date)s,
-                                                                           %(time)s,
-                                                                           %(temperature)s,
-                                                                           %(pressure)s,
-                                                                           %(wind_speed)s,
-                                                                           %(wind_direction)s,
-                                                                           %(humidity)s,
-                                                                           %(region)s)""", row)
-        db.execute("DROP TABLE aws_realtime")
-        db.execute("ALTER TABLE aws_realtime_rebuild RENAME TO aws_realtime")
+                with postgres:
+                    db = postgres.cursor()
+                    for row in (row for row in params if row is not None):
+                        db.execute("""INSERT INTO aws_realtime VALUES (%(station_name)s,
+                                                                    %(date)s,
+                                                                    %(time)s,
+                                                                    %(temperature)s,
+                                                                    %(pressure)s,
+                                                                    %(wind_speed)s,
+                                                                    %(wind_direction)s,
+                                                                    %(humidity)s,
+                                                                    %(region)s)""", row)
+    except Exception as e:
+        print("Error initializing realtime database")
+        print(e)
+
+def rebuild_realtime_table():
+    try:
+        with postgres:
+            db = postgres.cursor()
+            db.execute("""CREATE TABLE aws_realtime_rebuild (station_name VARCHAR(18),
+                                                    date DATE,
+                                                    time TIME,
+                                                    temperature REAL,
+                                                    pressure REAL,
+                                                    wind_speed REAL,
+                                                    wind_direction REAL,
+                                                    humidity REAL,
+                                                    region VARCHAR(24))""")
+            for (aws, station_name, region) in ARGOS:
+                data = read_data(get_data_url(aws))
+                if data:
+                    params = tuple(process_datapoint(station_name, region, row) for row in data)
+                    for row in (row for row in params if row is not None):
+                        db.execute("""INSERT INTO aws_realtime_rebuild VALUES (%(station_name)s,
+                                                                            %(date)s,
+                                                                            %(time)s,
+                                                                            %(temperature)s,
+                                                                            %(pressure)s,
+                                                                            %(wind_speed)s,
+                                                                            %(wind_direction)s,
+                                                                            %(humidity)s,
+                                                                            %(region)s)""", row)
+            db.execute("DROP TABLE aws_realtime")
+            db.execute("ALTER TABLE aws_realtime_rebuild RENAME TO aws_realtime")
+    except Exception as e:
+        print("Error rebuilding realtime database")
+        print(e)
 
 if __name__ == "__main__":
     print(f"{datetime.now()}\tStarting realtime database update")
