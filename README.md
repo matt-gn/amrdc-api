@@ -28,7 +28,7 @@ Valid entries for specific parameters:
 
 Setting `download=True` will initiate a streaming object with the requested data.
 
-Responses are limited to 10k lines.
+Responses are limited to 10k rows.
 
 Examples:
 
