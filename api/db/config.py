@@ -3,8 +3,8 @@ import psycopg2
 
 ## Set DB credentials
 DB_NAME = environ.get("POSTGRES_DB")
-DB_USER = environ.get("WRITE_USER")
-DB_PASSWORD = environ.get("WRITE_PASSWORD")
+DB_USER = environ.get("POSTGRES_USER")
+DB_PASSWORD = environ.get("POSTGRES_USER")
 DB_HOST = environ.get("POSTGRES_HOST")
 DB_PORT = environ.get("POSTGRES_PORT")
 postgres = psycopg2.connect(
