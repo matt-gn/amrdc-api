@@ -1,7 +1,7 @@
 from datetime import datetime
 from psycopg2 import sql
 from fastapi import FastAPI
-from fastapi.responses import JSONResponse, StreamingResponse
+from fastapi.responses import ORJSONResponse, StreamingResponse
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.staticfiles import StaticFiles
 from api_tools import query_database, generate_query, serve_csv, verify_input
@@ -30,8 +30,8 @@ app.mount("/static", StaticFiles(directory="static"), name="static")
                 ###  REALTIME AWS DATA  : `/realtime`   ###
                 ###########################################
 
-@app.get("/realtime/maxmin/{variable}")
-def current_maxmin_endpoint(variable: str) -> JSONResponse:
+@app.get("/realtime/maxmin/{variable}", response_class=ORJSONResponse)
+def current_maxmin_endpoint(variable: str) -> ORJSONResponse:
     max_q = sql.SQL("""SELECT station_name, TO_CHAR(date, 'YYYY-MM-DD'), TO_CHAR(time, 'HH24:MI:SS'), {}
                        FROM aws_realtime
                        ORDER BY {} DESC LIMIT 1""",).format(sql.Identifier(variable),
@@ -44,33 +44,33 @@ def current_maxmin_endpoint(variable: str) -> JSONResponse:
         "max": query_database(max_q)["data"],
         "min": query_database(min_q)["data"], 
     }
-    return JSONResponse(content=data)
+    return ORJSONResponse(content=data)
 
 
-@app.get("/realtime/station_list")
-def station_list_endpoint() -> JSONResponse:
+@app.get("/realtime/station_list", response_class=ORJSONResponse)
+def station_list_endpoint() -> ORJSONResponse:
     query = """SELECT DISTINCT(station_name), region
                FROM aws_realtime ORDER BY region, station_name"""
     query_results = query_database(query)["data"]
     station_dict = {}
     for station, region in query_results:
         station_dict.setdefault(region, []).append(station)
-    return JSONResponse(content=station_dict)
+    return ORJSONResponse(content=station_dict)
 
 
-@app.get("/realtime/station/{station}")
-def current_station_data_endpoint(station: str) -> JSONResponse:
+@app.get("/realtime/station/{station}", response_class=ORJSONResponse)
+def current_station_data_endpoint(station: str) -> ORJSONResponse:
     query = """SELECT station_name, TO_CHAR(date, 'YYYY-MM-DD') as date,
                 TO_CHAR(time, 'HH24:MI:SS') as time, temperature, pressure,
                 wind_speed, wind_direction, humidity
                 FROM aws_realtime
                 WHERE station_name = %s ORDER BY date DESC, time DESC LIMIT 1"""
     query_results = query_database(query, (station,))["data"]
-    return JSONResponse(content=query_results)
+    return ORJSONResponse(content=query_results)
 
 
-##@app.get("/realtime/daily-maxmin/{variable}")
-##def daily_maxmin_endpoint(variable: str = None) -> JSONResponse:
+##@app.get("/realtime/daily-maxmin/{variable}", response_class=ORJSONResponse)
+##def daily_maxmin_endpoint(variable: str = None) -> ORJSONResponse:
 ##    query = ("""SELECT station_name, TO_CHAR(date, 'YYYY-MM-DD'), TO_CHAR(time, 'HH24:MI:SS'),
 ##                variable, datapoint
 ##                FROM aws_realtime_aggregate
@@ -78,15 +78,15 @@ def current_station_data_endpoint(station: str) -> JSONResponse:
 ##    query_results = query_database(query[0], query[1])["data"]
 ##    maximum, minimum = query_results
 ##    daily_aggregates = {"max":maximum,"min":minimum}
-##    return JSONResponse(content=daily_aggregates)
+##    return ORJSONResponse(content=daily_aggregates)
 
 
                 #######################################
                 ###  HISTORICAL AWS DATA  : `/aws`  ###
                 #######################################
 
-@app.get("/aws/list")
-def list_stations_and_years_endpoint() -> JSONResponse:
+@app.get("/aws/list", response_class=ORJSONResponse)
+def list_stations_and_years_endpoint() -> ORJSONResponse:
     stations_list_query = "SELECT DISTINCT(station_name) FROM aws_10min ORDER BY station_name"
     years_list_query = "SELECT DISTINCT(date_part('year', date)::int) as date FROM aws_10min ORDER BY date"
     stations = query_database(stations_list_query)
@@ -95,28 +95,28 @@ def list_stations_and_years_endpoint() -> JSONResponse:
         "stations": stations["data"],
         "years": years["data"]
     }
-    return JSONResponse(content=data)
+    return ORJSONResponse(content=data)
 
 
-@app.get("/aws/list/stations={stations}")
-def list_station_years_endpoint(stations: str) -> JSONResponse:
+@app.get("/aws/list/stations={stations}", response_class=ORJSONResponse)
+def list_station_years_endpoint(stations: str) -> ORJSONResponse:
     station_list = tuple(station.replace('%20', ' ') for station in stations.split(','))
     query = ("""SELECT DISTINCT(date_part('year', date)::int) as date
              FROM aws_10min WHERE station_name IN %s ORDER BY date""", (station_list,))
     data = query_database(query[0], query[1])["data"]
-    return JSONResponse(content=data)
+    return ORJSONResponse(content=data)
 
 
-@app.get("/aws/list/years={years}")
-def list_yearly_stations_endpoint(years: str) -> JSONResponse:
+@app.get("/aws/list/years={years}", response_class=ORJSONResponse)
+def list_yearly_stations_endpoint(years: str) -> ORJSONResponse:
     years_list = tuple(year for year in years.split(','))
     query = ("""SELECT DISTINCT(station_name)
              FROM aws_10min WHERE date_part('year', date) IN %s ORDER BY station_name""", (years_list,))
     data = query_database(query[0], query[1])["data"]
-    return JSONResponse(content=data)
+    return ORJSONResponse(content=data)
 
 
-@app.get("/aws/data")
+@app.get("/aws/data", response_class=ORJSONResponse)
 def query_data_endpoint(query_type: str = "all",
                         stations: str = None,
                         interval: int = 2400,
@@ -124,10 +124,10 @@ def query_data_endpoint(query_type: str = "all",
                         enddate: str = "99991231",
                         variable: str = None,
                         grouping: str = None,
-                        download: bool = False) -> JSONResponse or StreamingResponse:
+                        download: bool = False) -> ORJSONResponse or StreamingResponse:
     input_error = verify_input(query_type, stations, variable, grouping)
     if input_error:
-        return JSONResponse({'error': input_error})
+        return ORJSONResponse({'error': input_error})
 
     stations = tuple(station.replace('%20', ' ') for station in stations.split(','))
     startdate = datetime.strptime(startdate, '%Y') if len(startdate) == 4 else datetime.strptime(startdate.replace('-',''), '%Y%m%d')
@@ -138,4 +138,4 @@ def query_data_endpoint(query_type: str = "all",
     if download:
         csv_stream = serve_csv(data, startdate, enddate)
         return csv_stream
-    return JSONResponse(content=data)
+    return ORJSONResponse(content=data)
