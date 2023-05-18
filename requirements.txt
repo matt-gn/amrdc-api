@@ -2,5 +2,5 @@ fastapi==0.95.1
 Pillow==9.5.0
 psycopg2_binary==2.9.6
 urllib3
-"uvicorn[standard]"
+uvicorn[standard]
 gunicorn
