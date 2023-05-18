@@ -18,6 +18,11 @@ app.add_middleware(
 )
 app.mount("/static", StaticFiles(directory="static"), name="static")
 
+@app.get("/test", response_class=ORJSONResponse)
+def test_app() -> ORJSONResponse:
+    now = datetime.now()
+    return ORJSONResponse(content={f'{now}' : 'AMRDC Data API is online'})
+
                         #######################
                         #### API ENDPOINTS ####
                         #######################
