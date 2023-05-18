@@ -76,6 +76,8 @@ def init_aws_table() -> None:
                                        for data in process_datafile(resource))
                 db.executemany("INSERT INTO aws_10min VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s)",
                                formatted_data)
+            db.execute("CREATE INDEX idx_10min_date ON aws_10min (date)")
+            db.execute("CREATE INDEX idx_10min_station ON aws_10min (station_name)")
     except Exception as error:
         print("Error initializing AWS table.")
         print(error)
@@ -132,7 +134,11 @@ def rebuild_aws_table():
                     db.executemany("INSERT INTO aws_10min_rebuild VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s)",
                                 formatted_data)
                 db.execute("DROP TABLE aws_10min")
+                db.execute("DROP INDEX IF EXISTS idx_10min_date")
+                db.execute("DROP INDEX IF EXISTS idx_10min_station")
                 db.execute("ALTER TABLE aws_10min_rebuild RENAME TO aws_10min")
+                db.execute("CREATE INDEX idx_10min_date ON aws_10min (date)")
+                db.execute("CREATE INDEX idx_10min_station ON aws_10min (station_name)")
         else:
             print("No new resources available from data repo")
     except Exception as error:
