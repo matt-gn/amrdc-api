@@ -8,9 +8,8 @@ from api_tools import query_database, generate_query, serve_csv, verify_input
 
 ## Define a FastAPI application which accepts all incoming requests
 ## and mount a publicly accessible /static directory for static content
-##app = FastAPI()
 
-app = FastAPI(root="/data-api")
+app = FastAPI()
 app.add_middleware(
     CORSMiddleware,
     allow_origins=["*"],
