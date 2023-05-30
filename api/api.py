@@ -95,7 +95,7 @@ def current_station_data_endpoint(station: str) -> ORJSONResponse:
 @app.get("/aws/list", response_class=ORJSONResponse)
 def list_stations_and_years_endpoint() -> ORJSONResponse:
     stations_list_query = "SELECT DISTINCT(station_name) FROM aws_10min ORDER BY station_name"
-    years_list_query = "SELECT DISTINCT(date_part('year', date)::int) as date FROM aws_10min ORDER BY date"
+    years_list_query = "SELECT * FROM aws_10min_years ORDER BY date"
     stations = query_database(stations_list_query)
     years = query_database(years_list_query)
     data = {

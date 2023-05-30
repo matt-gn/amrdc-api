@@ -43,6 +43,8 @@ def query_database(query_string: str, args: Tuple = ()) -> dict:
         database.execute(query_string, args)
         header = tuple(col[0] for col in database.description)
         data = database.fetchall()
+        database.close()  # Close the cursor
+    return_connection(postgres)
     return {"header": header, "data": data}
 
 def generate_query(query_type: str, stations: list, interval: int, startdate: datetime, enddate: datetime,
