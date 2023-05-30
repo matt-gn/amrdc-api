@@ -1,11 +1,13 @@
 package main
 
 import (
-	"fmt"
-	"time"
-	"net/http"
-	"github.com/gin-gonic/gin"
 	"database/sql"
+	"fmt"
+	"net/http"
+	"strings"
+	"time"
+
+	"github.com/gin-gonic/gin"
 	"github.com/lib/pq"
 )
 
@@ -17,11 +19,7 @@ type DBContext struct {
 
 func NewDBContext() (*DBContext, error) {
 	// TODO Fix this
-	db, err := sql.Open(
-		"postgres",
-		"postgres://amrdc_api:postgres@5432/amrdc_api"
-	)
-	err := db.Ping()
+	db, err := sql.Open("postgres", "postgres://amrdc_api:postgres@5432/amrdc_api")
 	if err != nil {
 		return nil, err
 	}
@@ -32,24 +30,22 @@ func (ctx *DBContext) Close() error {
 	return ctx.db.Close()
 }
 
-func (ctx *DBContext) Query(query string, args ...string) (*sql.Rows. error) {
+func (ctx *DBContext) Query(query string, args ...string) (*sql.Rows, error) {
 	return ctx.db.Query(query, args...)
 }
 
-func realtime_maxmin_endpoint(c *gin.Context, db *DBContext) (map[string][]Row) {
+func realtime_maxmin_endpoint(c *gin.Context, db *DBContext) map[string][]Row {
 	variable := pq.QuoteIdentifier(c.Param("variable"))
 	max_q := "SELECT station_name, TO_CHAR(date, 'YYYY-MM-DD'), TO_CHAR(time, 'HH24:MI:SS'), "
-			 + variable + " FROM aws_realtime
-			  ORDER BY " + variable + " DESC LIMIT 1"
+	+variable + " FROM aws_realtime ORDER BY " + variable + " DESC LIMIT 1"
 	min_q := "SELECT station_name, TO_CHAR(date, 'YYYY-MM-DD'), TO_CHAR(time, 'HH24:MI:SS'), "
-			  + variable + " FROM aws_realtime
-			   ORDER BY " + variable + " ASC LIMIT 1"
-	
+	+variable + " FROM aws_realtime ORDER BY " + variable + " ASC LIMIT 1"
+
 	type Row struct {
 		station_name string
-		date string
-		time string
-		variable float64
+		date         string
+		time         string
+		variable     float64
 	}
 
 	max := make([]Row, 0)
@@ -83,12 +79,11 @@ func realtime_maxmin_endpoint(c *gin.Context, db *DBContext) (map[string][]Row) 
 	}
 
 	json_response := map[string][]Row{"max": max, "min": min}
-	
+
 	c.JSON(http.StatusOK, json_response)
 }
 
-
-func realtime_list_endpoint(c *gin.Context, db *DBContext) (map[string][]string) {
+func realtime_list_endpoint(c *gin.Context, db *DBContext) map[string][]string {
 	query := "SELECT DISTINCT(station_name), region FROM aws_realtime ORDER BY region, station_name"
 	station_map := make(map[string][]string, 0)
 	results, err := db.Query(query)
@@ -112,34 +107,33 @@ func realtime_list_endpoint(c *gin.Context, db *DBContext) (map[string][]string)
 	c.JSON(http.StatusOK, station_map)
 }
 
-
-func realtime_station_data_endpoint(c *gin.Context, db *DBContext) ([]Row) {
+func realtime_station_data_endpoint(c *gin.Context, db *DBContext) []Row {
 	station := c.Param("station")
-	query := "SELECT station_name, TO_CHAR(date, 'YYYY-MM-DD') as date,
-			  TO_CHAR(time, 'HH24:MI:SS') as time, temperature, pressure,
-			  wind_speed, wind_direction, humidity
-			  FROM aws_realtime
-			  WHERE station_name = ? ORDER BY date DESC, time DESC LIMIT 1"
-	
+	query := "SELECT station_name, TO_CHAR(date, 'YYYY-MM-DD') as date, "
+	+"TO_CHAR(time, 'HH24:MI:SS') as time, temperature, pressure, "
+	+"wind_speed, wind_direction, humidity "
+	+"FROM aws_realtime "
+	+"WHERE station_name = ? ORDER BY date DESC, time DESC LIMIT 1"
+
 	type Row struct {
-		station_name string
-		date string
-		time string
-		temperature float64
-		pressure float64
-		wind_speed float64
+		station_name   string
+		date           string
+		time           string
+		temperature    float64
+		pressure       float64
+		wind_speed     float64
 		wind_direction float64
-		humidity float64
+		humidity       float64
 	}
-	
+
 	data := make([]Row, 0)
-	
+
 	results, err := db.Query(query, station)
 	if err != nil {
 		panic(err)
 	}
 	defer results.Close()
-	
+
 	for results.Next() {
 		newRow := Row{}
 		err := results.Scan(
@@ -150,7 +144,7 @@ func realtime_station_data_endpoint(c *gin.Context, db *DBContext) ([]Row) {
 			&newRow.pressure,
 			&newRow.wind_speed,
 			&newRow.wind_direction,
-			&newRow.humidity
+			&newRow.humidity,
 		)
 		if err != nil {
 			panic(err)
@@ -158,7 +152,7 @@ func realtime_station_data_endpoint(c *gin.Context, db *DBContext) ([]Row) {
 		data = append(data, newRow)
 	}
 
-	json_response := map[][]Row{"data": data}
+	json_response := map[string]Row{"data": data}
 	c.JSON(http.StatusOK, json_response)
 }
 
@@ -198,8 +192,8 @@ func aws_stations_and_years_endpoint(c *gin.Context, db *DBContext) {
 
 	data := map[string][]interface{}{
 		"stations": stations,
-		"years": years
-	}	
+		"years":    years,
+	}
 
 	c.JSON(http.StatusOK, data)
 }
@@ -207,8 +201,8 @@ func aws_stations_and_years_endpoint(c *gin.Context, db *DBContext) {
 func aws_station_years_endpoint(c *gin.Context, db *DBContext) {
 	user_input := c.Param("stations")
 	station_list := strings.Split(user_input, ",")
-    query := "SELECT DISTINCT(date_part('year', date)::int) as date
-             FROM aws_10min WHERE station_name = ANY($1) ORDER BY date"
+	query := "SELECT DISTINCT(date_part('year', date)::int) as date "
+	+"FROM aws_10min WHERE station_name = ANY($1) ORDER BY date"
 	years := make([]int, 0)
 	results, err := db.Query(query, station_list)
 	if err != nil {
@@ -223,15 +217,15 @@ func aws_station_years_endpoint(c *gin.Context, db *DBContext) {
 		}
 		years = append(years, year)
 	}
-	data := map[string][]int {"year": years}
+	data := map[string][]int{"year": years}
 	c.JSON(http.StatusOK, data)
 }
 
 func aws_yearly_stations_endpoint(c *gin.Context, db *DBContext) {
 	user_input := c.Param("years")
 	year_list := strings.Split(user_input, ",")
-	query := "SELECT DISTINCT(station_name)
-			 FROM aws_10min WHERE date_part('year', date) = ANY($1) ORDER BY station_name"
+	query := "SELECT DISTINCT(station_name) "
+	+"FROM aws_10min WHERE date_part('year', date) = ANY($1) ORDER BY station_name"
 	stations := make([]string, 0)
 	results, err := db.Query(query, pq.Array(year_list))
 	if err != nil {
@@ -246,7 +240,7 @@ func aws_yearly_stations_endpoint(c *gin.Context, db *DBContext) {
 		}
 		stations = append(stations, station)
 	}
-	data := map[string][]string {"stations": stations}
+	data := map[string][]string{"stations": stations}
 	c.JSON(http.StatusOK, data)
 }
 
@@ -270,7 +264,7 @@ func aws_data_endpoint(c *gin.Context, db *DBContext) {
 		startdate, err := time.Parse("20060102", startdate)
 		if err != nil {
 			c.JSON(500, gin.H{"Query error": "Unable to parse start date"})
-			return	
+			return
 		}
 	}
 	if enddate == "" {
@@ -279,127 +273,105 @@ func aws_data_endpoint(c *gin.Context, db *DBContext) {
 		enddate, err := time.Parse("20060102", enddate)
 		if err != nil {
 			c.JSON(500, gin.H{"Query error": "Unable to parse end date"})
-			return	
+			return
 		}
 	}
 	if interval == "" {
 		interval := 2400
 	}
 	if download == "True" {
-		limit_statement := 10**5
+		limit_statement := 10 * *5
 	} else {
-		limit_statement := 10**4
+		limit_statement := 10 * *4
 	}
 
 	switch variable {
-		case "temperature", "pressure", "wind_speed", "wind_direction", "humidity", "delta_t":
-			query := "SELECT
-						station_name as Name,
-						TO_CHAR(date, 'YYYY-MM-DD') as Date,
-						TO_CHAR(time, 'HH24:MI') as Time,
-						CAST(" + variable + ") as TEXT)
-					FROM aws_10min
-					WHERE
-						station_name = ANY($1)
-						AND date >= ?
-						AND date <= ?
-						AND MOD((date_part('hour', time) * 100 + date_part('minute', time))::int, ?) = 0
-					ORDER BY date, time " + limit_statement
-			
-			type Row struct {
-				station_name string
-				date string
-				time string
-				variable string
-			}
-			data := make([]Row, 0)
-			results, err := db.Query(query, stations_list, startdate, enddate, interval)
-			if err != nil {
-				panic(err)
-			}
-			defer results.Close()
-			for results.Next() {
-				newRow := Row{}
-				err := results.Scan(&newRow.station_name, &newRow.date, &newRow.time, &newRow.variable)
-				if err != nil {
-					panic(err)
-				}
-				data = append(max, newRow)
-			}
+	case "temperature", "pressure", "wind_speed", "wind_direction", "humidity", "delta_t":
+		query := "SELECT station_name as Name, TO_CHAR(date, 'YYYY-MM-DD') as Date, TO_CHAR(time, 'HH24:MI') as Time, CAST(" + variable + ") as TEXT) "
+		+"FROM aws_10min WHERE station_name = ANY($1) AND date >= ? AND date <= ? AND MOD((date_part('hour', time) * 100 + date_part('minute', time))::int, ?) = 0 "
+		+"ORDER BY date, time " + limit_statement
 
-		case "":
-			query := "SELECT
-						station_name as Name,
-						TO_CHAR(date, 'YYYY-MM-DD') as Date,
-						TO_CHAR(time, 'HH24:MI') as Time,
-						CAST(temperature as TEXT),
-						CAST(pressure as TEXT),
-						CAST(wind_speed as TEXT),
-						CAST(wind_direction as TEXT),
-						CAST(humidity as TEXT),
-						CAST(delta_t as TEXT)
-					FROM aws_10min
-					WHERE
-						station_name = ANY($1)
-						AND date >= ?
-						AND date <= ?
-						AND MOD((date_part('hour', time) * 100 + date_part('minute', time))::int, ?) = 0
-					ORDER BY date, time " + limit_statement
-			
-			type Row struct {
-				station_name string
-				date string
-				time string
-				temperature string
-				pressure string
-				wind_speed string
-				wind_direction string
-				humidity string
-				delta_t string
-			}
-			data := make([]Row, 0)
-			results, err := db.Query(query, stations_list, startdate, enddate, interval)
+		type Row struct {
+			station_name string
+			date         string
+			time         string
+			variable     string
+		}
+		data := make([]Row, 0)
+		results, err := db.Query(query, stations_list, startdate, enddate, interval)
+		if err != nil {
+			panic(err)
+		}
+		defer results.Close()
+		for results.Next() {
+			newRow := Row{}
+			err := results.Scan(&newRow.station_name, &newRow.date, &newRow.time, &newRow.variable)
 			if err != nil {
 				panic(err)
 			}
-			defer results.Close()
-			for results.Next() {
-				newRow := Row{}
-				err := results.Scan(
-					&newRow.station_name,
-					&newRow.date,
-					&newRow.time, 
-					&newRow.temperature,
-					&newRow.pressure,
-					&newRow.wind_speed,
-					&newRow.wind_direction,
-					&newRow.humidity,
-					&newRow.delta_t
-				)
-				if err != nil {
-					panic(err)
-				}
-				data = append(max, newRow)
-			}
-		
-		default:
-			c.JSON(500, gin.H{"Query error": "Invalid variable supplied"})
-			return
+			data = append(max, newRow)
 		}
 
-	json_response := map[string][]Row {"data": data}
+	case "":
+		query := "SELECT station_name as Name, TO_CHAR(date, 'YYYY-MM-DD') as Date, TO_CHAR(time, 'HH24:MI') as Time, "
+		+"CAST(temperature as TEXT), CAST(pressure as TEXT), CAST(wind_speed as TEXT), CAST(wind_direction as TEXT), "
+		+"CAST(humidity as TEXT), CAST(delta_t as TEXT) FROM aws_10min "
+		+"WHERE station_name = ANY($1) AND date >= ? AND date <= ? AND MOD((date_part('hour', time) * 100 + date_part('minute', time))::int, ?) = 0 "
+		+"ORDER BY date, time " + limit_statement
+
+		type Row struct {
+			station_name   string
+			date           string
+			time           string
+			temperature    string
+			pressure       string
+			wind_speed     string
+			wind_direction string
+			humidity       string
+			delta_t        string
+		}
+		data := make([]Row, 0)
+		results, err := db.Query(query, stations_list, startdate, enddate, interval)
+		if err != nil {
+			panic(err)
+		}
+		defer results.Close()
+		for results.Next() {
+			newRow := Row{}
+			err := results.Scan(
+				&newRow.station_name,
+				&newRow.date,
+				&newRow.time,
+				&newRow.temperature,
+				&newRow.pressure,
+				&newRow.wind_speed,
+				&newRow.wind_direction,
+				&newRow.humidity,
+				&newRow.delta_t,
+			)
+			if err != nil {
+				panic(err)
+			}
+			data = append(max, newRow)
+		}
+
+	default:
+		c.JSON(500, gin.H{"Query error": "Invalid variable supplied"})
+		return
+	}
+
+	json_response := map[string][]Row{"data": data}
 	c.JSON(http.StatusOK, json_response)
 }
 
-
-func aws_data_aggregate_endpoint(c *gin.Context, db *DBContext, agg_type) {
+func aws_data_aggregate_endpoint(c *gin.Context, db *DBContext, agg_type string) {
 	stations := c.Param("stations")
 	startdate := c.Param("startdate")
 	enddate := c.Param("enddate")
 	variable := c.Param("variable")
 	grouping := c.Param("grouping")
 	download := c.Param("download")
-	
+
 	if stations == "" || variable == "" {
 		c.JSON(500, gin.H{"Query error": "Query parameters 'stations', 'variable' required"})
 		return
@@ -412,7 +384,7 @@ func aws_data_aggregate_endpoint(c *gin.Context, db *DBContext, agg_type) {
 		startdate, err := time.Parse("20060102", startdate)
 		if err != nil {
 			c.JSON(500, gin.H{"Query error": "Unable to parse start date"})
-			return	
+			return
 		}
 	}
 	if enddate == "" {
@@ -421,20 +393,20 @@ func aws_data_aggregate_endpoint(c *gin.Context, db *DBContext, agg_type) {
 		enddate, err := time.Parse("20060102", enddate)
 		if err != nil {
 			c.JSON(500, gin.H{"Query error": "Unable to parse end date"})
-			return	
+			return
 		}
 	}
 	if download == "True" {
-		limit_statement := 10**5
+		limit_statement := 10 * *5
 	} else {
-		limit_statement := 10**4
+		limit_statement := 10 * *4
 	}
 	switch variable {
-		case "temperature", "wind_speed", "wind_direction", "humidity", "pressure", "delta_t":
-			column := pq.QuoteIdentifier(variable)
-		default:
-			c.JSON(500, gin.H{"Query error": "Invalid variable supplied"})
-			return
+	case "temperature", "wind_speed", "wind_direction", "humidity", "pressure", "delta_t":
+		column := pq.QuoteIdentifier(variable)
+	default:
+		c.JSON(500, gin.H{"Query error": "Invalid variable supplied"})
+		return
 	}
 	if agg_type == "max" {
 		aggregator := "DESC"
@@ -443,68 +415,22 @@ func aws_data_aggregate_endpoint(c *gin.Context, db *DBContext, agg_type) {
 	}
 
 	switch grouping {
-		case "year", "month", "day" {
-			query := "SELECT
-							aws.station_name as Name,
-							TO_CHAR(aws.date, 'YYYY-MM-DD') as Date,
-							TO_CHAR(aws.time, 'HH24:MI') as Time,
-							CAST(aws." + column " as TEXT) as " + column + "
-						FROM (
-							SELECT
-								station_name,
-								date,
-								time,
-								" + column + ",
-								ROW_NUMBER() OVER (
-								PARTITION BY
-									station_name,
-									date_trunc('" + grouping + "', date)
-								ORDER BY " + column + " " + aggregator + "
-							) as row_num
-							FROM aws_10min
-							WHERE
-								station_name = ANY($1) AND 
-								date >= ? AND 
-								date <= ? AND 
-								" + column + " != 444
-						) aws
-						WHERE row_num = 1
-						ORDER BY aws.station_name, date"
-		}
-		default {
-			query := "SELECT
-							aws.station_name as Name,
-							TO_CHAR(aws.date, 'YYYY-MM-DD') as Date,
-							TO_CHAR(aws.time, 'HH24:MI') as Time,
-							CAST(aws." + column " as TEXT) as " + column + "
-						FROM (
-							SELECT
-								station_name,
-								date,
-								time,
-								" + column + ",
-								ROW_NUMBER() OVER (
-								PARTITION BY
-									station_name
-								ORDER BY " + column + " " + aggregator + "
-							) as row_num
-							FROM aws_10min
-							WHERE
-								station_name = ANY($1) AND 
-								date >= ? AND 
-								date <= ? AND 
-								" + column + " != 444
-						) aws
-						WHERE row_num = 1
-						ORDER BY aws.station_name, date"
-		}
+	case "year", "month", "day":
+		query := "SELECT aws.station_name as Name, TO_CHAR(aws.date, 'YYYY-MM-DD') as Date, TO_CHAR(aws.time, 'HH24:MI') as Time, CAST(aws." + column + " as TEXT) "
+		+"FROM (SELECT station_name, date, time, " + column + ", ROW_NUMBER() OVER ( PARTITION BY station_name, date_trunc('" + grouping + "', date) "
+		+"ORDER BY " + column + " " + aggregator + ") as row_num FROM aws_10min WHERE station_name = ANY($1) AND date >= ? AND  date <= ? AND  " + column + " != 444"
+		+") aws WHERE row_num = 1 ORDER BY aws.station_name, date"
+	default:
+		query := "SELECT aws.station_name as Name, TO_CHAR(aws.date, 'YYYY-MM-DD') as Date, TO_CHAR(aws.time, 'HH24:MI') as Time, CAST(aws." + column + " as TEXT) "
+		+"FROM (SELECT station_name, date, time, " + column + ", ROW_NUMBER() OVER ( PARTITION BY station_name ORDER BY " + column + " " + aggregator + " "
+		+") as row_num FROM aws_10min WHERE station_name = ANY($1) AND date >= ? AND  date <= ? AND  " + column + " != 444 ) aws WHERE row_num = 1 ORDER BY aws.station_name, date"
 	}
 
 	type Row struct {
 		station_name string
-		date string
-		time string
-		variable string
+		date         string
+		time         string
+		variable     string
 	}
 
 	data := make([]Row, 0)
@@ -529,7 +455,7 @@ func aws_data_aggregate_endpoint(c *gin.Context, db *DBContext, agg_type) {
 		data = append(data, newRow)
 	}
 
-	json_response := map[][]Row{"data": data}
+	json_response := map[string]Row{"data": data}
 	c.JSON(http.StatusOK, json_response)
 
 }
@@ -549,10 +475,10 @@ func main() {
 	api.GET("/test", func(c *gin.Contenxt) {
 		timestamp := time.Now().Format("2006-01-02 15:04:05")
 		c.JSON(http.StatusOK, gin.H{
-			"Status OK": timestamp + "AMRDC Web API is up and running"	
+			"Status OK": timestamp + "AMRDC Web API is up and running",
 		})
 	})
-	
+
 	// Realtime data
 	api.GET("/realtime/maxmin/:variable", func(c *gin.Context) {
 		realtime_maxmin_endpoint(c, db)
