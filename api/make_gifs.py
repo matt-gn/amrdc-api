@@ -68,7 +68,7 @@ def make_gif(sat_images):                                                       
     for channel, urls in sat_images:                                            ## For channel url list,
         try:
             images = [Image.open(get_web_image(channel, url)) for url in urls]      ## Process each linked image
-            file_out = f"static/{channel}.gif"
+            file_out = f"/api/static/{channel}.gif"
             # Save the animated GIF
             images[0].save(file_out, save_all=True, append_images=images[1:],       ## Save as animated gif in the 'gifs' folder
                         duration=300, loop=0, optimize=True)
