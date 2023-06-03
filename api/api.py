@@ -8,6 +8,9 @@ from api_tools import query_database, generate_query, serve_csv, verify_input
 
 ## Define a FastAPI application which accepts all incoming requests
 ## and mount a publicly accessible /static directory for static content
+## TODO remove years endpoint + from list: too slow
+## Don't do the lookup table, makes everything too complicated
+## Realtime should have Current, Daily, Weekly, Monthly max/min searches
 
 app = FastAPI()
 app.add_middleware(
@@ -85,7 +88,6 @@ def current_station_data_endpoint(station: str) -> ORJSONResponse:
 ##    maximum, minimum = query_results
 ##    daily_aggregates = {"max":maximum,"min":minimum}
 ##    return ORJSONResponse(content=daily_aggregates)
-
 
                 #######################################
                 ###  HISTORICAL AWS DATA  : `/aws`  ###
